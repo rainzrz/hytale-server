@@ -8,7 +8,7 @@ services:
 
     ports:
       # QUIC protocol uses UDP
-      - "${SERVER_PORT:-5520}:5520/udp"
+      - "${SERVER_PORT:-5520}:${SERVER_PORT:-5520}/udp"
 
     environment:
       - JAVA_OPTS=${JAVA_OPTS:--Xms2G -Xmx4G}
