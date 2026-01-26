@@ -24,3 +24,14 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+*.zip
+!Assets.zip
+Server/
+start.bat
+start.sh
+*.zip
+!Assets.zip
+Server/
+start.bat
+start.sh
