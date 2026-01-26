@@ -3,6 +3,11 @@ HytaleServer.jar
 HytaleServer.aot
 Assets.zip
 
+# Hytale Downloader
+hytale-downloader-*
+QUICKSTART.md
+.hytale-downloader-credentials.json
+
 # Persistent data
 data/
 
