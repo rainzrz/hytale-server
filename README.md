@@ -1,8 +1,8 @@
 # Hytale Dedicated Server
 
-Production-ready Hytale dedicated server running on Docker with Cloudflare Tunnel for secure HTTPS access.
+Servidor dedicado Hytale pronto para produção, rodando em Docker com Cloudflare Tunnel para acesso HTTPS seguro.
 
-## Architecture
+## Arquitetura
 
 ```
                                     Internet
@@ -39,202 +39,202 @@ Production-ready Hytale dedicated server running on Docker with Cloudflare Tunne
       └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
-## Quick Links
+## Links Rápidos
 
-| Service | URL | Protocol |
-|---------|-----|----------|
-| Game Server | `norhytale.com:25565` | UDP/QUIC |
-| Status Dashboard | `https://norhytale.com` | HTTPS |
-| Local Dashboard | `http://192.168.1.13:3001` | HTTP |
+| Serviço | URL | Protocolo |
+|---------|-----|-----------|
+| Servidor de Jogo | `norhytale.com:25565` | UDP/QUIC |
+| Dashboard de Status | `https://norhytale.com` | HTTPS |
+| Dashboard Local | `http://192.168.1.13:3001` | HTTP |
 
-## Prerequisites
+## Pré-requisitos
 
-- Ubuntu Server 22.04+ (or similar Linux distribution)
+- Ubuntu Server 22.04+ (ou distribuição Linux similar)
 - Docker & Docker Compose
-- 16GB RAM (minimum 8GB)
-- Valid Hytale account with server access
-- Domain name (optional, for public access)
+- 16GB RAM (mínimo 8GB)
+- Conta Hytale válida com acesso ao servidor
+- Nome de domínio (opcional, para acesso público)
 
-## Quick Start
+## Início Rápido
 
-### 1. Clone the Repository
+### 1. Clonar o Repositório
 
 ```bash
 git clone https://github.com/yourusername/hytale-server.git
 cd hytale-server
 ```
 
-### 2. Download Server Files
+### 2. Baixar Arquivos do Servidor
 
-Download the Hytale server files using the official downloader:
+Baixe os arquivos do servidor Hytale usando o downloader oficial:
 
 ```bash
 chmod +x hytale-downloader-linux-amd64
 ./hytale-downloader-linux-amd64
 ```
 
-This will download:
-- `HytaleServer.jar` - Main server executable
-- `HytaleServer.aot` - Ahead-of-Time cache (optional)
-- `Assets.zip` - Game assets
+Isso vai baixar:
+- `HytaleServer.jar` - Executável principal do servidor
+- `HytaleServer.aot` - Cache Ahead-of-Time (opcional)
+- `Assets.zip` - Assets do jogo
 
-### 3. Configure Environment
+### 3. Configurar Ambiente
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Adjust settings based on your server:
+Ajuste as configurações baseado no seu servidor:
 
 ```env
-# For 16GB RAM server
+# Para servidor com 16GB RAM
 JAVA_OPTS=-Xms6G -Xmx12G
 
-# Server port
+# Porta do servidor
 SERVER_PORT=25565
 
-# Disable AOT if you get cache errors
+# Desabilite AOT se tiver erros de cache
 USE_AOT_CACHE=false
 ```
 
-### 4. Set Permissions
+### 4. Definir Permissões
 
 ```bash
 chmod -R 777 data/
 ```
 
-### 5. Start the Server
+### 5. Iniciar o Servidor
 
 ```bash
 docker compose up -d
 ```
 
-### 6. Authenticate
+### 6. Autenticar
 
 ```bash
 docker compose logs -f hytale-server
 ```
 
-Follow the authentication URL to link your Hytale account.
+Siga a URL de autenticação para vincular sua conta Hytale.
 
-## Configuration
+## Configuração
 
-### Environment Variables
+### Variáveis de Ambiente
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `JAVA_OPTS` | `-Xms2G -Xmx4G` | JVM memory allocation |
-| `SERVER_PORT` | `5520` | Server port (UDP) |
-| `USE_AOT_CACHE` | `true` | Use AOT cache for faster startup |
-| `EXTRA_ARGS` | - | Additional server arguments |
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `JAVA_OPTS` | `-Xms2G -Xmx4G` | Alocação de memória JVM |
+| `SERVER_PORT` | `5520` | Porta do servidor (UDP) |
+| `USE_AOT_CACHE` | `true` | Usar cache AOT para inicialização mais rápida |
+| `EXTRA_ARGS` | - | Argumentos adicionais do servidor |
 
-### Memory Recommendations
+### Recomendações de Memória
 
-| Server RAM | JAVA_OPTS |
-|------------|-----------|
+| RAM do Servidor | JAVA_OPTS |
+|-----------------|-----------|
 | 8GB | `-Xms2G -Xmx4G` |
 | 16GB | `-Xms6G -Xmx12G` |
 | 32GB | `-Xms12G -Xmx24G` |
 
-### Extra Arguments
+### Argumentos Extras
 
 ```env
 EXTRA_ARGS=--disable-sentry --backup --backup-frequency 30
 ```
 
-| Argument | Description |
-|----------|-------------|
-| `--disable-sentry` | Disable crash reporting |
-| `--backup` | Enable automatic backups |
-| `--backup-frequency N` | Backup every N minutes |
-| `--auth-mode offline` | Offline mode (no authentication) |
+| Argumento | Descrição |
+|-----------|-----------|
+| `--disable-sentry` | Desabilitar relatório de crashes |
+| `--backup` | Habilitar backups automáticos |
+| `--backup-frequency N` | Backup a cada N minutos |
+| `--auth-mode offline` | Modo offline (sem autenticação) |
 
-## Directory Structure
+## Estrutura de Diretórios
 
 ```
 hytale-server/
-├── Dockerfile              # Container image definition
-├── docker-compose.yml      # Container orchestration
-├── entrypoint.sh           # Server startup script
-├── .env.example            # Environment template
-├── .env                    # Your configuration (git ignored)
-├── HytaleServer.jar        # Server executable (git ignored)
-├── HytaleServer.aot        # AOT cache (git ignored)
-├── Assets.zip              # Game assets (git ignored)
+├── Dockerfile              # Definição da imagem do container
+├── docker-compose.yml      # Orquestração do container
+├── entrypoint.sh           # Script de inicialização
+├── .env.example            # Template de ambiente
+├── .env                    # Sua configuração (ignorado pelo git)
+├── HytaleServer.jar        # Executável do servidor (ignorado pelo git)
+├── HytaleServer.aot        # Cache AOT (ignorado pelo git)
+├── Assets.zip              # Assets do jogo (ignorado pelo git)
 └── data/
-    ├── universe/           # World data
-    ├── mods/               # Server mods
-    ├── logs/               # Server logs
-    ├── .cache/             # Server cache
-    ├── config.json         # Server configuration
-    ├── permissions.json    # Player permissions
-    ├── whitelist.json      # Whitelisted players
-    └── bans.json           # Banned players
+    ├── universe/           # Dados do mundo
+    ├── mods/               # Mods do servidor
+    ├── logs/               # Logs do servidor
+    ├── .cache/             # Cache do servidor
+    ├── config.json         # Configuração do servidor
+    ├── permissions.json    # Permissões dos jogadores
+    ├── whitelist.json      # Jogadores na whitelist
+    └── bans.json           # Jogadores banidos
 ```
 
-## Docker Management
+## Gerenciamento Docker
 
-### View Logs
+### Ver Logs
 
 ```bash
 docker compose logs -f hytale-server
 ```
 
-### Restart Server
+### Reiniciar Servidor
 
 ```bash
 docker compose restart hytale-server
 ```
 
-### Stop Server
+### Parar Servidor
 
 ```bash
 docker compose down
 ```
 
-### Rebuild After Changes
+### Reconstruir Após Mudanças
 
 ```bash
 docker compose up -d --build
 ```
 
-### Access Container Shell
+### Acessar Shell do Container
 
 ```bash
 docker compose exec hytale-server /bin/bash
 ```
 
-## Cloudflare Tunnel Setup
+## Configuração do Cloudflare Tunnel
 
-For secure HTTPS access without opening ports 80/443.
+Para acesso HTTPS seguro sem abrir as portas 80/443.
 
-### 1. Install Cloudflared
+### 1. Instalar Cloudflared
 
 ```bash
 curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
 sudo dpkg -i cloudflared.deb
 ```
 
-### 2. Authenticate
+### 2. Autenticar
 
 ```bash
 cloudflared tunnel login
 ```
 
-### 3. Create Tunnel
+### 3. Criar Tunnel
 
 ```bash
 cloudflared tunnel create norhytale
 ```
 
-### 4. Configure Tunnel
+### 4. Configurar Tunnel
 
-Create `/root/.cloudflared/config.yml`:
+Criar `/root/.cloudflared/config.yml`:
 
 ```yaml
-tunnel: YOUR_TUNNEL_ID
-credentials-file: /root/.cloudflared/YOUR_TUNNEL_ID.json
+tunnel: SEU_TUNNEL_ID
+credentials-file: /root/.cloudflared/SEU_TUNNEL_ID.json
 
 ingress:
   - hostname: norhytale.com
@@ -244,13 +244,13 @@ ingress:
   - service: http_status:404
 ```
 
-### 5. Create DNS Route
+### 5. Criar Rota DNS
 
 ```bash
 cloudflared tunnel route dns norhytale norhytale.com
 ```
 
-### 6. Install as Service
+### 6. Instalar como Serviço
 
 ```bash
 sudo cloudflared service install
@@ -258,15 +258,15 @@ sudo systemctl enable cloudflared
 sudo systemctl start cloudflared
 ```
 
-### 7. Verify Status
+### 7. Verificar Status
 
 ```bash
 sudo systemctl status cloudflared
 ```
 
-## Monitoring with Uptime Kuma
+## Monitoramento com Uptime Kuma
 
-### Install Uptime Kuma
+### Instalar Uptime Kuma
 
 ```bash
 docker run -d \
@@ -277,97 +277,97 @@ docker run -d \
   louislam/uptime-kuma:1
 ```
 
-### Configure Monitor
+### Configurar Monitor
 
-1. Access `http://YOUR_SERVER_IP:3001`
-2. Create account
-3. Add monitor:
-   - **Type:** TCP Port
+1. Acesse `http://IP_DO_SEU_SERVIDOR:3001`
+2. Crie uma conta
+3. Adicione monitor:
+   - **Tipo:** TCP Port
    - **Hostname:** localhost
-   - **Port:** 25565
-   - **Interval:** 60 seconds
+   - **Porta:** 25565
+   - **Intervalo:** 60 segundos
 
-## Network Configuration
+## Configuração de Rede
 
-### Required Ports
+### Portas Necessárias
 
-| Port | Protocol | Service | Direction |
-|------|----------|---------|-----------|
-| 25565 | UDP | Hytale Server | Inbound |
-| 3001 | TCP | Uptime Kuma | Inbound (optional) |
+| Porta | Protocolo | Serviço | Direção |
+|-------|-----------|---------|---------|
+| 25565 | UDP | Servidor Hytale | Entrada |
+| 3001 | TCP | Uptime Kuma | Entrada (opcional) |
 
 ### Firewall (UFW)
 
 ```bash
-sudo ufw allow 25565/udp comment "Hytale Server"
+sudo ufw allow 25565/udp comment "Servidor Hytale"
 sudo ufw allow 3001/tcp comment "Uptime Kuma"
 ```
 
 ### Port Forwarding
 
-Configure your router to forward:
-- External port `25565` UDP → Internal `192.168.1.13:25565`
-- External port `3001` TCP → Internal `192.168.1.13:3001` (optional)
+Configure seu roteador para encaminhar:
+- Porta externa `25565` UDP → Interna `192.168.1.13:25565`
+- Porta externa `3001` TCP → Interna `192.168.1.13:3001` (opcional)
 
-## Troubleshooting
+## Solução de Problemas
 
-### AOT Cache Errors
+### Erros de Cache AOT
 
-If you see "Unable to map shared spaces" error:
+Se você ver o erro "Unable to map shared spaces":
 
 ```bash
-# Disable AOT cache in .env
+# Desabilite o cache AOT no .env
 USE_AOT_CACHE=false
 ```
 
-### Permission Denied
+### Permissão Negada
 
 ```bash
 sudo chmod -R 777 data/
 docker compose down && docker compose up -d
 ```
 
-### Server Won't Start
+### Servidor Não Inicia
 
 ```bash
-# Check logs
+# Verificar logs
 docker compose logs -f hytale-server
 
-# Verify files exist
+# Verificar se os arquivos existem
 ls -la HytaleServer.jar Assets.zip
 ```
 
-### Authentication Issues
+### Problemas de Autenticação
 
 ```bash
-# Restart and re-authenticate
+# Reiniciar e re-autenticar
 docker compose down
 docker compose up -d
 docker compose logs -f hytale-server
 ```
 
-### Cloudflare Tunnel Not Working
+### Cloudflare Tunnel Não Funciona
 
 ```bash
-# Check tunnel status
+# Verificar status do tunnel
 sudo systemctl status cloudflared
 
-# View tunnel logs
+# Ver logs do tunnel
 sudo journalctl -u cloudflared -f
 
-# Restart tunnel
+# Reiniciar tunnel
 sudo systemctl restart cloudflared
 ```
 
-## Backup & Restore
+## Backup & Restauração
 
-### Manual Backup
+### Backup Manual
 
 ```bash
 tar -czvf backup-$(date +%Y%m%d).tar.gz data/
 ```
 
-### Restore
+### Restaurar
 
 ```bash
 docker compose down
@@ -376,55 +376,55 @@ tar -xzvf backup-YYYYMMDD.tar.gz
 docker compose up -d
 ```
 
-### Automatic Backups
+### Backups Automáticos
 
-Enable in `.env`:
+Habilite no `.env`:
 
 ```env
 EXTRA_ARGS=--backup --backup-frequency 30
 ```
 
-## Security Considerations
+## Considerações de Segurança
 
-- Server runs as non-root user inside container
-- Sensitive files (`.env`, credentials) are git ignored
-- Cloudflare provides DDoS protection and SSL termination
-- Regular updates recommended for Docker images and cloudflared
+- Servidor roda como usuário não-root dentro do container
+- Arquivos sensíveis (`.env`, credenciais) são ignorados pelo git
+- Cloudflare fornece proteção DDoS e terminação SSL
+- Atualizações regulares recomendadas para imagens Docker e cloudflared
 
-## Services Status
+## Status dos Serviços
 
-Check all services:
+Verificar todos os serviços:
 
 ```bash
-# Docker containers
+# Containers Docker
 docker ps
 
-# Cloudflared tunnel
+# Tunnel Cloudflared
 sudo systemctl status cloudflared
 
 # Uptime Kuma
 docker logs uptime-kuma
 ```
 
-## Contributing
+## Contribuindo
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+1. Faça um fork do repositório
+2. Crie uma branch de feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Crie um Pull Request
 
-## License
+## Licença
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
-## Acknowledgments
+## Agradecimentos
 
-- [Hytale](https://hytale.com) - Game by Hypixel Studios
-- [Eclipse Temurin](https://adoptium.net) - Java runtime
-- [Cloudflare](https://cloudflare.com) - Tunnel and CDN
-- [Uptime Kuma](https://github.com/louislam/uptime-kuma) - Monitoring
+- [Hytale](https://hytale.com) - Jogo da Hypixel Studios
+- [Eclipse Temurin](https://adoptium.net) - Runtime Java
+- [Cloudflare](https://cloudflare.com) - Tunnel e CDN
+- [Uptime Kuma](https://github.com/louislam/uptime-kuma) - Monitoramento
 
 ---
 
-**Server Status:** https://norhytale.com
+**Status do Servidor:** https://norhytale.com
