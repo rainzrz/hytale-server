@@ -8,6 +8,12 @@ hytale-downloader-*
 QUICKSTART.md
 .hytale-downloader-credentials.json
 
+# Downloaded files
+*.zip
+Server/
+start.bat
+start.sh
+
 # Persistent data
 data/
 
@@ -24,14 +30,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-
-*.zip
-!Assets.zip
-Server/
-start.bat
-start.sh
-*.zip
-!Assets.zip
-Server/
-start.bat
-start.sh
