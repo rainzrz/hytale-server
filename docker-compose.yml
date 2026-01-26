@@ -1,0 +1,41 @@
+services:
+  hytale-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hytale-server
+    restart: unless-stopped
+
+    ports:
+      # QUIC protocol uses UDP
+      - "${SERVER_PORT:-5520}:5520/udp"
+
+    environment:
+      - JAVA_OPTS=${JAVA_OPTS:--Xms2G -Xmx4G}
+      - SERVER_PORT=${SERVER_PORT:-5520}
+      - USE_AOT_CACHE=${USE_AOT_CACHE:-true}
+      - EXTRA_ARGS=${EXTRA_ARGS:-}
+
+    volumes:
+      # Persistent data
+      - ./data/universe:/server/universe
+      - ./data/mods:/server/mods
+      - ./data/logs:/server/logs
+      - ./data/.cache:/server/.cache
+      # Config files (server creates/updates these automatically)
+      - ./data/config.json:/server/config.json
+      - ./data/permissions.json:/server/permissions.json
+      - ./data/whitelist.json:/server/whitelist.json
+      - ./data/bans.json:/server/bans.json
+
+    # Limit resources
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 4G
+
+    # For interactive console (authentication)
+    stdin_open: true
+    tty: true

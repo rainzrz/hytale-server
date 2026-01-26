@@ -1,0 +1,21 @@
+# Server files (download separately - too large for git)
+HytaleServer.jar
+HytaleServer.aot
+Assets.zip
+
+# Persistent data
+data/
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
