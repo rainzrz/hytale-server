@@ -6,7 +6,12 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(docker network:*)",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(ls:*)",
+      "Bash(git rm:*)",
+      "Bash(ssh-add:*)",
+      "Bash(tree:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
