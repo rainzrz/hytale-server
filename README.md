@@ -193,8 +193,7 @@ hytale-server/
 │   └── uptime-kuma/           # Dados do Kuma
 │
 ├── 🔧 scripts/                # Scripts de manutenção
-│   ├── maintenance.sh         # Painel interativo de gerenciamento
-│   └── manage.sh              # Utilitários diversos
+│   └── maintenance.sh         # Painel interativo de gerenciamento
 │
 ├── 🛠️ tools/                  # Ferramentas e binários
 │   ├── hytale-downloader      # Downloader oficial do Hytale
