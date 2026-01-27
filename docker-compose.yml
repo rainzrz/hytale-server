@@ -73,6 +73,7 @@ services:
       - KUMA_API_KEY=${KUMA_API_KEY}
       - KUMA_URL=${KUMA_URL:-http://uptime-kuma:3001}
       - KUMA_MONITOR_ID=${KUMA_MONITOR_ID:-1}
+      - KUMA_STATUS_SLUG=${KUMA_STATUS_SLUG:-hytale}
     depends_on:
       - uptime-kuma
       - hytale-server
