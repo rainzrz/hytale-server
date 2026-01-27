@@ -81,17 +81,13 @@ async def checar_network():
 
 async def checar_hytale_server():
     try:
-        loop = asyncio.get_event_loop()
-        def server_check():
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5)
-                result = sock.connect_ex(("hytale-server", 25565))
-                sock.close()
-                return result == 0
-            except Exception:
-                return False
-        return 1 if await loop.run_in_executor(None, server_check) else 0
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.Running}}", "hytale-server"],
+            capture_output=True,
+            text=True
+        )
+
+        return 1 if result.stdout.strip() == "true" else 0
     except Exception:
         return 0
 
