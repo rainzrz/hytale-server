@@ -1,111 +1,72 @@
 import os
+import asyncio
+import aiohttp
 import discord
 from discord.ext import tasks
-import aiohttp
-import asyncio
+from datetime import datetime
 
-# Variáveis de ambiente
-TOKEN = os.environ.get("DISCORD_TOKEN")
-KANAL_ID = int(os.environ.get("KANAL_ID"))
-KUMA_URL = os.environ.get("KUMA_URL")
-API_KEY = os.environ.get("API_KEY")
+TOKEN = os.getenv("DISCORD_TOKEN")
+CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
+KUMA_API_KEY = os.getenv("KUMA_API_KEY")
+KUMA_URL = os.getenv("KUMA_URL")
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 
-monitor_status = {}
+ultimo_status = None
 
-# Função para buscar status de forma assíncrona
-async def buscar_status():
-    headers = {"Authorization": f"Bearer {API_KEY}"}
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get(KUMA_URL) as resp:
-            return await resp.json()
+async def buscar_status_kuma():
+    headers = {
+        "Authorization": f"Bearer {KUMA_API_KEY}"
+    }
 
-# Loop rápido: alertas imediatos (30 segundos)
+    timeout = aiohttp.ClientTimeout(total=10)
+
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(KUMA_URL, headers=headers) as response:
+            if response.status != 200:
+                raise Exception(f"Erro HTTP {response.status}")
+            return await response.json()
+
 @tasks.loop(seconds=30)
-async def checar_alertas():
-    global monitor_status
+async def checar_status():
+    global ultimo_status
+
+    agora = datetime.now().strftime("%H:%M:%S")
+    print(f"[{agora}] Checando status no Uptime Kuma...")
+
+    canal = client.get_channel(CHANNEL_ID)
+    if not canal:
+        print("Canal do Discord não encontrado")
+        return
+
     try:
-        data = await buscar_status()
-        canal = client.get_channel(KANAL_ID)
-        if not canal:
-            print(f"Canal com ID {KANAL_ID} não encontrado")
-            return
+        data = await buscar_status_kuma()
 
-        for monitor in data.get('monitors', []):
-            name = monitor.get('name', 'Desconhecido')
-            status = monitor.get('status', 'down')
-            anterior = monitor_status.get(name, status)
-            monitor_status[name] = status
+        monitor = data["monitors"][0]
+        status = monitor["status"]
 
-            if status != anterior:
-                # Define emoji e cor por status
-                if status == 'up':
-                    emoji = "🟢"
-                    color = 0x00FF00
-                    desc = "Agora está online"
-                elif status == 'down':
-                    emoji = "🔴"
-                    color = 0xFF0000
-                    desc = "Monitor caiu!"
-                elif status == 'paused':
-                    emoji = "🟡"
-                    color = 0xFFFF00
-                    desc = "Monitor está pausado"
+        if status != ultimo_status:
+            if status == 1:
+                await canal.send("🟢 **Servidor ONLINE**")
+                print("Servidor ONLINE")
+            elif status == 0:
+                await canal.send("🔴 **Servidor OFFLINE**")
+                print("Servidor OFFLINE")
+            elif status == 2:
+                await canal.send("⏸️ **Monitor PAUSADO**")
+                print("Monitor PAUSADO")
 
-                alerta_embed = discord.Embed(
-                    title=f"{emoji} {name} mudou de status!",
-                    description=desc,
-                    color=color
-                )
-                alerta_embed.set_footer(text="Uptime Monitor • Synks Bot")
-                await canal.send(embed=alerta_embed)
+            ultimo_status = status
+        else:
+            print("Status inalterado")
 
     except Exception as e:
-        print("Erro ao checar alertas:", e)
-
-# Loop lento: dashboard completo (5 minutos)
-@tasks.loop(minutes=5)
-async def enviar_dashboard():
-    try:
-        data = await buscar_status()
-        canal = client.get_channel(KANAL_ID)
-        if not canal:
-            print(f"Canal com ID {KANAL_ID} não encontrado")
-            return
-
-        embed = discord.Embed(
-            title="🎮 Dashboard de Servidores",
-            description="Status atualizado dos monitores do Uptime Kuma",
-            color=0x1F1F1F
-        )
-
-        for monitor in data.get('monitors', []):
-            name = monitor.get('name', 'Desconhecido')
-            status = monitor.get('status', 'down')
-            if status == 'up':
-                emoji = "🟢"
-            elif status == 'down':
-                emoji = "🔴"
-            else:
-                emoji = "🟡"
-            embed.add_field(
-                name=f"{emoji} {name}",
-                value=f"Status: {status.upper()}",
-                inline=False
-            )
-
-        embed.set_footer(text="Uptime Monitor • Synks Bot")
-        await canal.send(embed=embed)
-
-    except Exception as e:
-        print("Erro ao enviar dashboard:", e)
+        print(f"Erro ao consultar Kuma: {e}")
 
 @client.event
 async def on_ready():
-    print(f'Logado como {client.user}')
-    checar_alertas.start()
-    enviar_dashboard.start()
+    print(f"Bot conectado como {client.user}")
+    checar_status.start()
 
 client.run(TOKEN)
