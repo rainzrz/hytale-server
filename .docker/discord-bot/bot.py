@@ -48,39 +48,30 @@ client = discord.Client(intents=intents)
 ultimo_status = None
 
 async def buscar_status_kuma():
-    """Busca status dos monitores no Uptime Kuma via Status Page API"""
+    """Busca status do monitor via Badge API do Uptime Kuma"""
     timeout = aiohttp.ClientTimeout(total=10)
 
-    # Uptime Kuma Status Page API (pública, não requer auth)
-    # Formato: /api/status-page/{slug}
-    # Onde slug é o identificador da status page
-    # Por padrão, vamos tentar alguns slugs comuns
-    slugs_to_try = [os.getenv("KUMA_STATUS_SLUG", "hytale"), "default", "status"]
+    # Badge API retorna informações de status em tempo real
+    # Formato: /api/badge/{monitor_id}/status
+    # Retorna JSON com status, uptime, etc
+    api_url = f"{KUMA_URL}/api/badge/{KUMA_MONITOR_ID}/status"
+    print(f"DEBUG: Usando Badge API: {api_url}", flush=True)
 
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        for slug in slugs_to_try:
-            api_url = f"{KUMA_URL}/api/status-page/{slug}"
-            print(f"DEBUG: Tentando URL: {api_url}", flush=True)
+        try:
+            async with session.get(api_url) as response:
+                print(f"DEBUG: Status HTTP: {response.status}", flush=True)
 
-            try:
-                async with session.get(api_url) as response:
-                    print(f"DEBUG: Status HTTP: {response.status}", flush=True)
-
-                    if response.status == 200:
-                        content_type = response.headers.get('Content-Type', '')
-                        if 'application/json' in content_type:
-                            data = await response.json()
-                            print(f"DEBUG: Status page encontrada: {slug}", flush=True)
-                            return data
-                        else:
-                            print(f"DEBUG: Resposta não é JSON (slug={slug})", flush=True)
-            except Exception as e:
-                print(f"DEBUG: Erro tentando slug '{slug}': {e}", flush=True)
-                continue
-
-        # Se nenhum slug funcionou, tentar endpoint de heartbeat
-        print("DEBUG: Tentando endpoint alternativo...", flush=True)
-        raise Exception("Nenhuma status page encontrada. Configure KUMA_STATUS_SLUG no .env ou crie uma status page no Kuma")
+                if response.status == 200:
+                    data = await response.json()
+                    print(f"DEBUG: Resposta da Badge API: {data}", flush=True)
+                    return data
+                else:
+                    response_text = await response.text()
+                    raise Exception(f"Erro HTTP {response.status}: {response_text}")
+        except Exception as e:
+            print(f"DEBUG: Erro ao buscar badge: {e}", flush=True)
+            raise
 
 @tasks.loop(seconds=30)
 async def checar_status():
@@ -97,46 +88,32 @@ async def checar_status():
     try:
         data = await buscar_status_kuma()
 
-        # Status Page API retorna: {config: {...}, publicGroupList: [{monitorList: [...]}]}
-        monitor = None
-        status = None
-
-        if isinstance(data, dict):
-            # Formato Status Page API
-            if "publicGroupList" in data:
-                print(f"DEBUG: Encontrado publicGroupList", flush=True)
-                for group in data.get("publicGroupList", []):
-                    monitor_list = group.get("monitorList", [])
-                    if monitor_list:
-                        # Pegar primeiro monitor ou o monitor com ID especificado
-                        for mon in monitor_list:
-                            if KUMA_MONITOR_ID:
-                                if str(mon.get("id")) == str(KUMA_MONITOR_ID):
-                                    monitor = mon
-                                    break
-                            else:
-                                monitor = mon
-                                break
-                    if monitor:
-                        break
-
-            # Formato direto do monitor
-            elif 'id' in data or 'status' in data:
-                monitor = data
-
-        if not monitor:
-            print(f"⚠️ Nenhum monitor encontrado. Estrutura: {list(data.keys()) if isinstance(data, dict) else 'lista'}", flush=True)
+        # Badge API retorna: {status: "up"|"down"|"pending", uptime: "99.9%", ...}
+        if not isinstance(data, dict):
+            print(f"⚠️ Resposta inválida da API: {data}", flush=True)
             return
 
-        # Status pode estar em diferentes campos
-        # Status Page usa: 0 = offline, 1 = online, 2 = pausado
-        status = monitor.get("status", monitor.get("active", None))
+        print(f"DEBUG: Campos disponíveis: {list(data.keys())}", flush=True)
 
-        if status is None:
-            print(f"⚠️ Status não encontrado. Campos do monitor: {list(monitor.keys())}", flush=True)
+        # Badge API usa "status" com valores "up", "down", "pending"
+        status_str = data.get("status")
+
+        if not status_str:
+            print(f"⚠️ Campo 'status' não encontrado. Dados: {data}", flush=True)
             return
 
-        print(f"DEBUG: Status atual: {status} (Monitor: {monitor.get('name', 'N/A')})", flush=True)
+        # Converter string para número (0 = offline, 1 = online, 2 = pending)
+        if status_str == "up":
+            status = 1
+        elif status_str == "down":
+            status = 0
+        elif status_str == "pending":
+            status = 2
+        else:
+            print(f"⚠️ Status desconhecido: {status_str}", flush=True)
+            return
+
+        print(f"DEBUG: Status: {status_str} ({status})", flush=True)
 
         if status != ultimo_status:
             if status == 1:
