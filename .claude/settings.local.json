@@ -11,7 +11,12 @@
       "Bash(git rm:*)",
       "Bash(ssh-add:*)",
       "Bash(tree:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(docker logs:*)",
+      "Bash(sudo docker logs:*)",
+      "Bash(sudo docker ps:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)"
     ]
   }
 }
