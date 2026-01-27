@@ -10,5 +10,8 @@ COPY .docker/discord-bot/bot.py .docker/discord-bot/requirements.txt /app/
 # Instala dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Desabilita buffer do Python para logs em tempo real
+ENV PYTHONUNBUFFERED=1
+
 # Comando para rodar o bot
-CMD ["python", "bot.py"]
+CMD ["python", "-u", "bot.py"]

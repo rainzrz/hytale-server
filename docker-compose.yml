@@ -71,7 +71,8 @@ services:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
       - KUMA_API_KEY=${KUMA_API_KEY}
-      - KUMA_URL=${KUMA_URL:-http://uptime-kuma:3001/api/status-page/heartbeat/hytale}
+      - KUMA_URL=${KUMA_URL:-http://uptime-kuma:3001}
+      - KUMA_MONITOR_ID=${KUMA_MONITOR_ID:-1}
     depends_on:
       - uptime-kuma
       - hytale-server
