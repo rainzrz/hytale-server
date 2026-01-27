@@ -1,81 +1,53 @@
 import os
 import sys
 import asyncio
-import aiohttp
 import discord
 from discord.ext import tasks
 from datetime import datetime
 import socket
 
-# Validar variáveis de ambiente
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID_STR = os.getenv("DISCORD_CHANNEL_ID")
-KUMA_API_KEY = os.getenv("KUMA_API_KEY")
-KUMA_URL = os.getenv("KUMA_URL", "http://uptime-kuma:3001")
-KUMA_MONITOR_ID = os.getenv("KUMA_MONITOR_ID", "1")
 
-# Verificar se variáveis obrigatórias estão configuradas
-if not TOKEN or TOKEN == "seu_token_aqui":
-    print("❌ ERRO: DISCORD_TOKEN não configurado no .env")
-    print("Configure o token do bot em https://discord.com/developers/applications")
+if not TOKEN:
+    print("ERRO: DISCORD_TOKEN não configurado")
     sys.exit(1)
 
-if not CHANNEL_ID_STR or CHANNEL_ID_STR == "seu_canal_id_aqui":
-    print("❌ ERRO: DISCORD_CHANNEL_ID não configurado no .env")
-    print("Ative o Modo Desenvolvedor no Discord e copie o ID do canal")
+if not CHANNEL_ID_STR:
+    print("ERRO: DISCORD_CHANNEL_ID não configurado")
     sys.exit(1)
 
 try:
     CHANNEL_ID = int(CHANNEL_ID_STR)
 except ValueError:
-    print(f"❌ ERRO: DISCORD_CHANNEL_ID inválido: {CHANNEL_ID_STR}")
-    print("O ID do canal deve ser apenas números")
+    print("ERRO: DISCORD_CHANNEL_ID inválido")
     sys.exit(1)
-
-if not KUMA_API_KEY or KUMA_API_KEY == "sua_api_key_aqui":
-    print("⚠️ AVISO: KUMA_API_KEY não configurado")
-    print("O bot tentará acessar a API sem autenticação")
-    KUMA_API_KEY = None
-
-print("✓ Configurações validadas", flush=True)
-print(f"  - Canal Discord: {CHANNEL_ID}", flush=True)
-print(f"  - Monitorando 3 serviços:", flush=True)
-print(f"    • NOR Cloudflare (DNS norhytale.com)", flush=True)
-print(f"    • NOR Docker (SSH 192.168.1.13:22)", flush=True)
-print(f"    • NOR Network (186.219.130.224)", flush=True)
-print(f"  - Embed consolidado será atualizado a cada 30s", flush=True)
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 
+status_message_id = None
+
 ultimo_status = {
     "cloudflare": None,
     "docker": None,
-    "network": None
+    "network": None,
+    "hytale": None
 }
 
-# ID da mensagem de status (será atualizada)
-status_message_id = None
-
 async def checar_cloudflare():
-    """Verifica DNS do domínio norhytale.com"""
     try:
         loop = asyncio.get_event_loop()
         def dns_lookup():
             try:
-                result = socket.getaddrinfo("norhytale.com", None)
-                return len(result) > 0
+                return bool(socket.getaddrinfo("norhytale.com", None))
             except Exception:
                 return False
-
-        online = await loop.run_in_executor(None, dns_lookup)
-        return 1 if online else 0
-    except Exception as e:
-        print(f"DEBUG: Erro Cloudflare DNS: {e}", flush=True)
+        return 1 if await loop.run_in_executor(None, dns_lookup) else 0
+    except Exception:
         return 0
 
 async def checar_docker():
-    """Verifica TCP porta 22 em 192.168.1.13"""
     try:
         loop = asyncio.get_event_loop()
         def tcp_check():
@@ -87,18 +59,14 @@ async def checar_docker():
                 return result == 0
             except Exception:
                 return False
-
-        online = await loop.run_in_executor(None, tcp_check)
-        return 1 if online else 0
-    except Exception as e:
-        print(f"DEBUG: Erro Docker SSH: {e}", flush=True)
+        return 1 if await loop.run_in_executor(None, tcp_check) else 0
+    except Exception:
         return 0
 
 async def checar_network():
-    """Verifica ping para 186.219.130.224"""
     try:
         loop = asyncio.get_event_loop()
-        def ping_check():
+        def net_check():
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
@@ -107,20 +75,15 @@ async def checar_network():
                 return result == 0
             except Exception:
                 return False
-
-        online = await loop.run_in_executor(None, ping_check)
-        return 1 if online else 0
-    except Exception as e:
-        print(f"DEBUG: Erro Network ping: {e}", flush=True)
+        return 1 if await loop.run_in_executor(None, net_check) else 0
+    except Exception:
         return 0
 
 async def checar_hytale_server():
-    """Verifica se o servidor Hytale está rodando (porta 25565 UDP)"""
     try:
         loop = asyncio.get_event_loop()
         def server_check():
             try:
-                # Tenta conexão TCP no hostname do container
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
                 result = sock.connect_ex(("hytale-server", 25565))
@@ -128,39 +91,56 @@ async def checar_hytale_server():
                 return result == 0
             except Exception:
                 return False
-
-        online = await loop.run_in_executor(None, server_check)
-        return 1 if online else 0
-    except Exception as e:
-        print(f"DEBUG: Erro Hytale Server: {e}", flush=True)
+        return 1 if await loop.run_in_executor(None, server_check) else 0
+    except Exception:
         return 0
 
-def criar_embed_status(status_cloudflare, status_docker, status_network):
-    """Cria embed formatado com status de todos os serviços (sem emojis)"""
+def criar_embed_online():
     embed = discord.Embed(
-        title="Uptime Status",
-        color=discord.Color.green() if all([status_cloudflare, status_docker, status_network]) else discord.Color.red(),
+        title="NOR Infrastructure Status",
+        description="Todos os serviços estão operando normalmente.",
+        color=discord.Color.from_rgb(34, 197, 94),
         timestamp=datetime.now()
     )
-
-    # Texto de status
-    status_cf = "ONLINE" if status_cloudflare == 1 else "OFFLINE"
-    status_docker_txt = "ONLINE" if status_docker == 1 else "OFFLINE"
-    status_network_txt = "ONLINE" if status_network == 1 else "OFFLINE"
 
     embed.add_field(
         name="Serviços",
         value=(
-            f"NOR Cloudflare: {status_cf}\n"
-            f"NOR Docker: {status_docker_txt}\n"
-            f"NOR Network: {status_network_txt}"
+            f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
+            f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
+            f"{'🟢' if status['network'] else '🔴'} Network\n"
+            f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
         ),
         inline=False
     )
 
     embed.add_field(
-        name="IPs",
+        name="Endpoints",
         value="norhytale.com:25565\n186.219.130.224:25565",
+        inline=False
+    )
+
+    embed.set_image(url="https://i.imgur.com/8YQZQZB.png")
+    embed.set_footer(text="Monitoramento automático | NOR")
+
+    return embed
+
+def criar_embed_problema(status):
+    embed = discord.Embed(
+        title="NOR Infrastructure",
+        description="Um ou mais serviços estão indisponíveis.",
+        color=discord.Color.from_rgb(239, 68, 68),
+        timestamp=datetime.now()
+    )
+
+    embed.add_field(
+        name="Serviços",
+        value=(
+            f"Cloudflare DNS: {'🟢' if status['cloudflare'] else 'OFFLINE'}\n"
+            f"Docker Host: {'🟢' if status['docker'] else 'OFFLINE'}\n"
+            f"Network: {'🟢' if status['network'] else 'OFFLINE'}\n"
+            f"Hytale Server: {'🟢' if status['hytale'] else 'OFFLINE'}"
+        ),
         inline=False
     )
 
@@ -170,82 +150,47 @@ def criar_embed_status(status_cloudflare, status_docker, status_network):
         inline=False
     )
 
-    embed.set_footer(text="Atualizado automaticamente")
+    embed.set_image(url="https://i.imgur.com/JzqZQZV.png")
+    embed.set_footer(text="Aguardando normalização | NOR")
 
     return embed
 
-
 @tasks.loop(seconds=30)
 async def checar_status():
-    global ultimo_status, status_message_id
-
-    agora = datetime.now().strftime("%H:%M:%S")
-    print(f"[{agora}] Checando status do servidor...", flush=True)
+    global status_message_id, ultimo_status
 
     canal = client.get_channel(CHANNEL_ID)
     if not canal:
-        print("❌ Canal do Discord não encontrado", flush=True)
         return
 
-    try:
-        # Checar todos os serviços
-        status_cloudflare = await checar_cloudflare()
-        status_docker = await checar_docker()
-        status_network = await checar_network()
+    status_atual = {
+        "cloudflare": await checar_cloudflare(),
+        "docker": await checar_docker(),
+        "network": await checar_network(),
+        "hytale": await checar_hytale_server()
+    }
 
-        print(f"DEBUG: Cloudflare={status_cloudflare}, Docker={status_docker}, Network={status_network}", flush=True)
+    ultimo_status = status_atual.copy()
 
-        # Verificar se houve mudanças
-        houve_mudanca = (
-            status_cloudflare != ultimo_status["cloudflare"] or
-            status_docker != ultimo_status["docker"] or
-            status_network != ultimo_status["network"]
-        )
+    if all(status_atual.values()):
+        embed = criar_embed_online()
+    else:
+        embed = criar_embed_problema(status_atual)
 
-        if houve_mudanca:
-            # Log das mudanças
-            if status_cloudflare != ultimo_status["cloudflare"]:
-                print(f"✓ Cloudflare: {'ONLINE' if status_cloudflare == 1 else 'OFFLINE'}", flush=True)
-            if status_docker != ultimo_status["docker"]:
-                print(f"✓ Docker: {'ONLINE' if status_docker == 1 else 'OFFLINE'}", flush=True)
-            if status_network != ultimo_status["network"]:
-                print(f"✓ Network: {'ONLINE' if status_network == 1 else 'OFFLINE'}", flush=True)
-
-            # Atualizar status
-            ultimo_status["cloudflare"] = status_cloudflare
-            ultimo_status["docker"] = status_docker
-            ultimo_status["network"] = status_network
-
-        # Criar embed atualizado
-        embed = criar_embed_status(status_cloudflare, status_docker, status_network)
-
-        # Atualizar ou criar mensagem
-        if status_message_id:
-            try:
-                mensagem = await canal.fetch_message(status_message_id)
-                await mensagem.edit(embed=embed)
-                print("  Mensagem de status atualizada", flush=True)
-            except discord.NotFound:
-                # Mensagem foi deletada, criar nova
-                mensagem = await canal.send(embed=embed)
-                status_message_id = mensagem.id
-                print("  Nova mensagem de status criada (anterior foi deletada)", flush=True)
-        else:
-            # Criar mensagem inicial
-            mensagem = await canal.send(embed=embed)
-            status_message_id = mensagem.id
-            print("  Mensagem inicial de status criada", flush=True)
-
-        if not houve_mudanca:
-            print("  Status inalterado", flush=True)
-
-    except Exception as e:
-        print(f"❌ Erro ao verificar serviços: {e}", flush=True)
+    if status_message_id:
+        try:
+            msg = await canal.fetch_message(status_message_id)
+            await msg.edit(embed=embed)
+        except discord.NotFound:
+            msg = await canal.send(embed=embed)
+            status_message_id = msg.id
+    else:
+        msg = await canal.send(embed=embed)
+        status_message_id = msg.id
 
 @client.event
 async def on_ready():
-    print(f"Bot conectado como {client.user}", flush=True)
-    print("Iniciando verificação de status...", flush=True)
+    print(f"Bot conectado como {client.user}")
     checar_status.start()
 
 client.run(TOKEN)
