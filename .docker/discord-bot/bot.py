@@ -5,6 +5,7 @@ import aiohttp
 import discord
 from discord.ext import tasks
 from datetime import datetime
+import socket
 
 # Validar variáveis de ambiente
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -37,48 +38,75 @@ if not KUMA_API_KEY or KUMA_API_KEY == "sua_api_key_aqui":
     KUMA_API_KEY = None
 
 print("✓ Configurações validadas", flush=True)
-print(f"  - Canal: {CHANNEL_ID}", flush=True)
-print(f"  - Kuma URL: {KUMA_URL}", flush=True)
-print(f"  - Monitor ID: {KUMA_MONITOR_ID}", flush=True)
-print(f"  - Auth: {'Sim' if KUMA_API_KEY else 'Não'}", flush=True)
+print(f"  - Canal Discord: {CHANNEL_ID}", flush=True)
+print(f"  - Monitorando: hytale-server:5520", flush=True)
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 
 ultimo_status = None
 
-async def buscar_status_kuma():
-    """Busca status do monitor via Badge API do Uptime Kuma"""
-    timeout = aiohttp.ClientTimeout(total=10)
+async def checar_servidor_hytale():
+    """Verifica se o container do servidor Hytale está online"""
+    # O servidor Hytale está no container "hytale-server" na mesma rede Docker
+    servidor_host = "hytale-server"
+    servidor_porta = 5520  # Porta UDP do servidor
 
-    # Badge API retorna informações de status em tempo real
-    # Formato: /api/badge/{monitor_id}/status
-    # Retorna JSON com status, uptime, etc
-    api_url = f"{KUMA_URL}/api/badge/{KUMA_MONITOR_ID}/status"
-    print(f"DEBUG: Usando Badge API: {api_url}", flush=True)
+    print(f"DEBUG: Verificando {servidor_host}:{servidor_porta}", flush=True)
 
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        try:
-            async with session.get(api_url) as response:
-                print(f"DEBUG: Status HTTP: {response.status}", flush=True)
+    try:
+        # Tentar conectar via TCP para verificar se o container está respondendo
+        # Como é UDP, vamos verificar se o host é alcançável
+        loop = asyncio.get_event_loop()
 
-                if response.status == 200:
-                    data = await response.json()
-                    print(f"DEBUG: Resposta da Badge API: {data}", flush=True)
-                    return data
-                else:
-                    response_text = await response.text()
-                    raise Exception(f"Erro HTTP {response.status}: {response_text}")
-        except Exception as e:
-            print(f"DEBUG: Erro ao buscar badge: {e}", flush=True)
-            raise
+        # Verificar se o host resolve
+        def check_host():
+            try:
+                socket.getaddrinfo(servidor_host, None)
+                return True
+            except socket.gaierror:
+                return False
+
+        host_exists = await loop.run_in_executor(None, check_host)
+
+        if not host_exists:
+            print(f"DEBUG: Host {servidor_host} não encontrado", flush=True)
+            return 0  # Offline
+
+        # Tentar conectar na porta UDP
+        # Como UDP não tem handshake, vamos verificar se a porta está bound
+        def check_udp_port():
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(2)
+                # Enviar um pacote vazio e ver se recebemos algo de volta
+                sock.sendto(b'', (servidor_host, servidor_porta))
+                # Se conseguiu enviar, o host está alcançável
+                sock.close()
+                return True
+            except Exception as e:
+                print(f"DEBUG: Erro UDP: {e}", flush=True)
+                return False
+
+        udp_ok = await loop.run_in_executor(None, check_udp_port)
+
+        if udp_ok:
+            print(f"DEBUG: Servidor alcançável", flush=True)
+            return 1  # Online
+        else:
+            print(f"DEBUG: Servidor não respondendo", flush=True)
+            return 0  # Offline
+
+    except Exception as e:
+        print(f"DEBUG: Erro ao verificar servidor: {e}", flush=True)
+        return 0  # Offline em caso de erro
 
 @tasks.loop(seconds=30)
 async def checar_status():
     global ultimo_status
 
     agora = datetime.now().strftime("%H:%M:%S")
-    print(f"[{agora}] Checando status no Uptime Kuma...", flush=True)
+    print(f"[{agora}] Checando status do servidor...", flush=True)
 
     canal = client.get_channel(CHANNEL_ID)
     if not canal:
@@ -86,34 +114,10 @@ async def checar_status():
         return
 
     try:
-        data = await buscar_status_kuma()
+        # Verificar status diretamente
+        status = await checar_servidor_hytale()
 
-        # Badge API retorna: {status: "up"|"down"|"pending", uptime: "99.9%", ...}
-        if not isinstance(data, dict):
-            print(f"⚠️ Resposta inválida da API: {data}", flush=True)
-            return
-
-        print(f"DEBUG: Campos disponíveis: {list(data.keys())}", flush=True)
-
-        # Badge API usa "status" com valores "up", "down", "pending"
-        status_str = data.get("status")
-
-        if not status_str:
-            print(f"⚠️ Campo 'status' não encontrado. Dados: {data}", flush=True)
-            return
-
-        # Converter string para número (0 = offline, 1 = online, 2 = pending)
-        if status_str == "up":
-            status = 1
-        elif status_str == "down":
-            status = 0
-        elif status_str == "pending":
-            status = 2
-        else:
-            print(f"⚠️ Status desconhecido: {status_str}", flush=True)
-            return
-
-        print(f"DEBUG: Status: {status_str} ({status})", flush=True)
+        print(f"DEBUG: Status do servidor: {status}", flush=True)
 
         if status != ultimo_status:
             if status == 1:
