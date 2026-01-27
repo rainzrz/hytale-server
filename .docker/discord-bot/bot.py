@@ -5,6 +5,11 @@ import discord
 from discord.ext import tasks
 from datetime import datetime
 import socket
+import subprocess
+
+# =====================
+# CONFIGURAÇÃO
+# =====================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID_STR = os.getenv("DISCORD_CHANNEL_ID")
@@ -28,6 +33,10 @@ client = discord.Client(intents=intents)
 
 status_message_id = None
 
+# =====================
+# STATUS CACHE
+# =====================
+
 ultimo_status = {
     "cloudflare": None,
     "docker": None,
@@ -35,21 +44,29 @@ ultimo_status = {
     "hytale": None
 }
 
+# =====================
+# CHECKS
+# =====================
+
 async def checar_cloudflare():
     try:
         loop = asyncio.get_event_loop()
+
         def dns_lookup():
             try:
                 return bool(socket.getaddrinfo("norhytale.com", None))
             except Exception:
                 return False
+
         return 1 if await loop.run_in_executor(None, dns_lookup) else 0
     except Exception:
         return 0
 
+
 async def checar_docker():
     try:
         loop = asyncio.get_event_loop()
+
         def tcp_check():
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -59,13 +76,16 @@ async def checar_docker():
                 return result == 0
             except Exception:
                 return False
+
         return 1 if await loop.run_in_executor(None, tcp_check) else 0
     except Exception:
         return 0
 
+
 async def checar_network():
     try:
         loop = asyncio.get_event_loop()
+
         def net_check():
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -75,9 +95,11 @@ async def checar_network():
                 return result == 0
             except Exception:
                 return False
+
         return 1 if await loop.run_in_executor(None, net_check) else 0
     except Exception:
         return 0
+
 
 async def checar_hytale_server():
     try:
@@ -91,9 +113,13 @@ async def checar_hytale_server():
     except Exception:
         return 0
 
-def criar_embed_online():
+# =====================
+# EMBEDS
+# =====================
+
+def criar_embed_online(status):
     embed = discord.Embed(
-        title="NOR Infrastructure Status",
+        title="NOR Infrastructure",
         description="Todos os serviços estão operando normalmente.",
         color=discord.Color.from_rgb(34, 197, 94),
         timestamp=datetime.now()
@@ -102,10 +128,10 @@ def criar_embed_online():
     embed.add_field(
         name="Serviços",
         value=(
-            f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
-            f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
-            f"{'🟢' if status['network'] else '🔴'} Network\n"
-            f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
+            "🟢 Cloudflare DNS\n"
+            "🟢 Docker Host\n"
+            "🟢 Network\n"
+            "🟢 Hytale Server"
         ),
         inline=False
     )
@@ -121,6 +147,7 @@ def criar_embed_online():
 
     return embed
 
+
 def criar_embed_problema(status):
     embed = discord.Embed(
         title="NOR Infrastructure",
@@ -132,10 +159,10 @@ def criar_embed_problema(status):
     embed.add_field(
         name="Serviços",
         value=(
-            f"Cloudflare DNS: {'🟢' if status['cloudflare'] else 'OFFLINE'}\n"
-            f"Docker Host: {'🟢' if status['docker'] else 'OFFLINE'}\n"
-            f"Network: {'🟢' if status['network'] else 'OFFLINE'}\n"
-            f"Hytale Server: {'🟢' if status['hytale'] else 'OFFLINE'}"
+            f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
+            f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
+            f"{'🟢' if status['network'] else '🔴'} Network\n"
+            f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
         ),
         inline=False
     )
@@ -150,6 +177,10 @@ def criar_embed_problema(status):
     embed.set_footer(text="Aguardando normalização | NOR")
 
     return embed
+
+# =====================
+# LOOP PRINCIPAL
+# =====================
 
 @tasks.loop(seconds=30)
 async def checar_status():
@@ -169,7 +200,7 @@ async def checar_status():
     ultimo_status = status_atual.copy()
 
     if all(status_atual.values()):
-        embed = criar_embed_online()
+        embed = criar_embed_online(status_atual)
     else:
         embed = criar_embed_problema(status_atual)
 
@@ -183,6 +214,10 @@ async def checar_status():
     else:
         msg = await canal.send(embed=embed)
         status_message_id = msg.id
+
+# =====================
+# START
+# =====================
 
 @client.event
 async def on_ready():
