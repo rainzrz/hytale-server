@@ -1,14 +1,9 @@
 #!/bin/bash
 
-# Cores
+# Cores (apenas para status)
 RESET='\033[0m'
-GREEN='\033[38;2;0;255;100m'
-YELLOW='\033[38;2;255;200;0m'
-RED='\033[38;2;255;50;50m'
-BLUE='\033[38;2;100;150;255m'
-CYAN='\033[38;2;0;200;255m'
-PURPLE='\033[38;2;200;100;255m'
-GRAY='\033[38;2;150;150;150m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
 
 # Ícones
 ICON_SERVER="🎮"
@@ -25,9 +20,9 @@ clear_screen() {
 }
 
 print_header() {
-    echo -e "${PURPLE}╔════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${PURPLE}║${RESET}        ${CYAN}⚡ PAINEL DE MANUTENÇÃO - NOR HYTALE ⚡${RESET}        ${PURPLE}║${RESET}"
-    echo -e "${PURPLE}╚════════════════════════════════════════════════════════╝${RESET}"
+    echo "╔════════════════════════════════════════════════════════╗"
+    echo "║        ⚡ PAINEL DE MANUTENÇÃO - NOR HYTALE ⚡        ║"
+    echo "╚════════════════════════════════════════════════════════╝"
     echo ""
 }
 
@@ -43,10 +38,10 @@ get_container_status() {
             echo -e "${ICON_OFFLINE} ${RED}Offline${RESET}"
             ;;
         paused)
-            echo -e "${ICON_PAUSED} ${YELLOW}Pausado${RESET}"
+            echo -e "${ICON_PAUSED} Pausado"
             ;;
         *)
-            echo -e "${ICON_UNKNOWN} ${GRAY}Não encontrado${RESET}"
+            echo -e "${ICON_UNKNOWN} Não encontrado"
             ;;
     esac
 }
@@ -66,25 +61,25 @@ show_container_menu() {
     local status=$(get_container_status $container)
     local uptime=$(get_container_uptime $container)
 
-    echo -e "${CYAN}╭─────────────────────────────────────────────────────╮${RESET}"
-    echo -e "${CYAN}│${RESET}  ${icon} ${BLUE}${container}${RESET}"
-    echo -e "${CYAN}│${RESET}  Status: ${status}"
-    echo -e "${CYAN}│${RESET}  Iniciado: ${GRAY}${uptime}${RESET}"
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────╯${RESET}"
+    echo "╭─────────────────────────────────────────────────────╮"
+    echo "│  ${icon} ${container}"
+    echo "│  Status: ${status}"
+    echo "│  Iniciado: ${uptime}"
+    echo "╰─────────────────────────────────────────────────────╯"
     echo ""
 
-    echo -e "${YELLOW}O que você deseja fazer?${RESET}"
+    echo "O que você deseja fazer?"
     echo ""
-    echo -e "  ${GREEN}1)${RESET} ▶️  Iniciar"
-    echo -e "  ${RED}2)${RESET} ⏹️  Parar"
-    echo -e "  ${YELLOW}3)${RESET} 🔄 Reiniciar"
-    echo -e "  ${CYAN}4)${RESET} 📋 Ver logs"
-    echo -e "  ${CYAN}5)${RESET} 📋 Ver logs (tempo real)"
-    echo -e "  ${BLUE}6)${RESET} 📊 Ver estatísticas"
-    echo -e "  ${PURPLE}7)${RESET} 🔧 Reconstruir container"
-    echo -e "  ${PURPLE}8)${RESET} 💻 Acessar shell"
-    echo -e "  ${BLUE}9)${RESET} ℹ️  Ver informações"
-    echo -e "  ${GRAY}0)${RESET} ⬅️  Voltar"
+    echo "  1) ▶️  Iniciar"
+    echo "  2) ⏹️  Parar"
+    echo "  3) 🔄 Reiniciar"
+    echo "  4) 📋 Ver logs"
+    echo "  5) 📋 Ver logs (tempo real)"
+    echo "  6) 📊 Ver estatísticas"
+    echo "  7) 🔧 Reconstruir container"
+    echo "  8) 💻 Acessar shell"
+    echo "  9) ℹ️  Ver informações"
+    echo "  0) ⬅️  Voltar"
     echo ""
     echo -n "Escolha: "
 
@@ -93,56 +88,56 @@ show_container_menu() {
 
     case "$action" in
         1)
-            echo -e "${GREEN}Iniciando ${container}...${RESET}"
+            echo "Iniciando ${container}..."
             docker start $container
-            echo -e "${GREEN}✓ Container iniciado${RESET}"
+            echo "✓ Container iniciado"
             ;;
         2)
-            echo -e "${RED}Parando ${container}...${RESET}"
+            echo "Parando ${container}..."
             docker stop $container
-            echo -e "${RED}✓ Container parado${RESET}"
+            echo "✓ Container parado"
             ;;
         3)
-            echo -e "${YELLOW}Reiniciando ${container}...${RESET}"
+            echo "Reiniciando ${container}..."
             docker restart $container
-            echo -e "${YELLOW}✓ Container reiniciado${RESET}"
+            echo "✓ Container reiniciado"
             ;;
         4)
-            echo -e "${CYAN}Últimas 50 linhas de log:${RESET}"
-            echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
+            echo "Últimas 50 linhas de log:"
+            echo "────────────────────────────────────────────────────"
             docker logs --tail 50 $container
             ;;
         5)
-            echo -e "${CYAN}Logs em tempo real (Ctrl+C para sair):${RESET}"
-            echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
+            echo "Logs em tempo real (Ctrl+C para sair):"
+            echo "────────────────────────────────────────────────────"
             docker logs -f --tail 20 $container
             ;;
         6)
-            echo -e "${BLUE}Estatísticas em tempo real (Ctrl+C para sair):${RESET}"
-            echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
+            echo "Estatísticas em tempo real (Ctrl+C para sair):"
+            echo "────────────────────────────────────────────────────"
             docker stats $container
             ;;
         7)
-            echo -e "${PURPLE}Reconstruindo ${container}...${RESET}"
+            echo "Reconstruindo ${container}..."
             cd /home/rainz/hytale-server
             docker-compose up -d --build --force-recreate $container
-            echo -e "${PURPLE}✓ Container reconstruído${RESET}"
+            echo "✓ Container reconstruído"
             ;;
         8)
-            echo -e "${PURPLE}Acessando shell do ${container}...${RESET}"
-            echo -e "${GRAY}(digite 'exit' para sair)${RESET}"
+            echo "Acessando shell do ${container}..."
+            echo "(digite 'exit' para sair)"
             docker exec -it $container /bin/bash 2>/dev/null || docker exec -it $container /bin/sh
             ;;
         9)
-            echo -e "${BLUE}Informações do ${container}:${RESET}"
-            echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
+            echo "Informações do ${container}:"
+            echo "────────────────────────────────────────────────────"
             docker inspect $container | head -50
             ;;
         0)
             return
             ;;
         *)
-            echo -e "${RED}✗ Opção inválida${RESET}"
+            echo "✗ Opção inválida"
             ;;
     esac
 
@@ -155,26 +150,26 @@ main_menu() {
         clear_screen
         print_header
 
-        echo -e "${YELLOW}Selecione o container:${RESET}"
+        echo "Selecione o container:"
         echo ""
 
         # Hytale Server
         local status1=$(get_container_status "hytale-server")
-        echo -e "  ${GREEN}1)${RESET} ${ICON_SERVER} ${BLUE}hytale-server${RESET} - ${status1}"
+        echo "  1) ${ICON_SERVER} hytale-server - ${status1}"
 
         # Uptime Kuma
         local status2=$(get_container_status "uptime-kuma")
-        echo -e "  ${GREEN}2)${RESET} ${ICON_MONITOR} ${BLUE}uptime-kuma${RESET}    - ${status2}"
+        echo "  2) ${ICON_MONITOR} uptime-kuma    - ${status2}"
 
         # Discord Bot
         local status3=$(get_container_status "discord-bot")
-        echo -e "  ${GREEN}3)${RESET} ${ICON_BOT} ${BLUE}discord-bot${RESET}     - ${status3}"
+        echo "  3) ${ICON_BOT} discord-bot     - ${status3}"
 
         echo ""
-        echo -e "  ${CYAN}4)${RESET} 🔄 Reiniciar todos"
-        echo -e "  ${CYAN}5)${RESET} 📊 Ver todos os status"
-        echo -e "  ${CYAN}6)${RESET} 📋 Ver todos os logs"
-        echo -e "  ${RED}0)${RESET} 🚪 Sair"
+        echo "  4) 🔄 Reiniciar todos"
+        echo "  5) 📊 Ver todos os status"
+        echo "  6) 📋 Ver todos os logs"
+        echo "  0) 🚪 Sair"
         echo ""
         echo -n "Escolha: "
 
@@ -192,37 +187,37 @@ main_menu() {
                 ;;
             4)
                 echo ""
-                echo -e "${YELLOW}Reiniciando todos os containers...${RESET}"
+                echo "Reiniciando todos os containers..."
                 cd /home/rainz/hytale-server
                 docker-compose restart
-                echo -e "${GREEN}✓ Todos os containers foram reiniciados${RESET}"
+                echo "✓ Todos os containers foram reiniciados"
                 echo ""
                 read -p "Pressione Enter para continuar..."
                 ;;
             5)
                 echo ""
-                echo -e "${CYAN}Status de todos os containers:${RESET}"
-                echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
+                echo "Status de todos os containers:"
+                echo "────────────────────────────────────────────────────"
                 docker-compose ps
                 echo ""
                 read -p "Pressione Enter para continuar..."
                 ;;
             6)
                 echo ""
-                echo -e "${CYAN}Logs de todos os containers (Ctrl+C para sair):${RESET}"
-                echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
+                echo "Logs de todos os containers (Ctrl+C para sair):"
+                echo "────────────────────────────────────────────────────"
                 cd /home/rainz/hytale-server
                 docker-compose logs -f --tail 20
                 ;;
             0)
                 clear_screen
-                echo -e "${GREEN}👋 Até logo!${RESET}"
+                echo "👋 Até logo!"
                 echo ""
                 exit 0
                 ;;
             *)
                 echo ""
-                echo -e "${RED}✗ Opção inválida${RESET}"
+                echo "✗ Opção inválida"
                 sleep 1
                 ;;
         esac
@@ -232,7 +227,7 @@ main_menu() {
 # Verificar se Docker está rodando
 if ! docker ps > /dev/null 2>&1; then
     clear_screen
-    echo -e "${RED}✗ Erro: Docker não está rodando ou você não tem permissão${RESET}"
+    echo "✗ Erro: Docker não está rodando ou você não tem permissão"
     echo ""
     exit 1
 fi
