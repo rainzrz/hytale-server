@@ -136,41 +136,44 @@ async def checar_hytale_server():
         return 0
 
 def criar_embed_status(status_cloudflare, status_docker, status_network):
-    """Cria embed formatado com status de todos os serviços"""
+    """Cria embed formatado com status de todos os serviços (sem emojis)"""
     embed = discord.Embed(
-        title="🔄 Uptime Status",
+        title="Uptime Status",
         color=discord.Color.green() if all([status_cloudflare, status_docker, status_network]) else discord.Color.red(),
         timestamp=datetime.now()
     )
 
-    # Status dos serviços
-    emoji_cf = "🟢" if status_cloudflare == 1 else "🔴"
-    emoji_docker = "🟢" if status_docker == 1 else "🔴"
-    emoji_network = "🟢" if status_network == 1 else "🔴"
+    # Texto de status
+    status_cf = "ONLINE" if status_cloudflare == 1 else "OFFLINE"
+    status_docker_txt = "ONLINE" if status_docker == 1 else "OFFLINE"
+    status_network_txt = "ONLINE" if status_network == 1 else "OFFLINE"
 
     embed.add_field(
-        name="📊 Serviços",
-        value=f"{emoji_cf} NOR Cloudflare\n{emoji_docker} NOR Docker\n{emoji_network} NOR Network",
+        name="Serviços",
+        value=(
+            f"NOR Cloudflare: {status_cf}\n"
+            f"NOR Docker: {status_docker_txt}\n"
+            f"NOR Network: {status_network_txt}"
+        ),
         inline=False
     )
 
-    # IPs
     embed.add_field(
-        name="🌐 IPs",
+        name="IPs",
         value="norhytale.com:25565\n186.219.130.224:25565",
         inline=False
     )
 
-    # Monitoramento
     embed.add_field(
-        name="📈 Monitoramento",
-        value="[norhytale.com](https://norhytale.com)",
+        name="Monitoramento",
+        value="https://norhytale.com",
         inline=False
     )
 
-    embed.set_footer(text="Atualizado")
+    embed.set_footer(text="Atualizado automaticamente")
 
     return embed
+
 
 @tasks.loop(seconds=30)
 async def checar_status():
