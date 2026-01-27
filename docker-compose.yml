@@ -52,6 +52,7 @@ services:
       - "3001:3001"
     volumes:
       - ./data/uptime-kuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "node", "extra/healthcheck.js"]
       interval: 60s
@@ -67,6 +68,8 @@ services:
     restart: unless-stopped
     networks:
       - hytale-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
