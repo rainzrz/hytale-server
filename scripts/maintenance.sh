@@ -211,8 +211,6 @@ main_menu() {
                 ;;
             0)
                 clear_screen
-                echo "👋 Até logo!"
-                echo ""
                 exit 0
                 ;;
             *)
