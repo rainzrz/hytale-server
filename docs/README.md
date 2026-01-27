@@ -170,47 +170,16 @@ df -h
 ```
 hytale-server/
 │
-├── 🐳 .docker/                # Configurações Docker
-│   ├── hytale/                # Container do servidor Hytale
-│   │   ├── Dockerfile
-│   │   ├── entrypoint.sh
-│   │   └── .dockerignore
-│   └── discord-bot/           # Container do bot Discord
-│       ├── Dockerfile
-│       ├── bot.py
-│       ├── requirements.txt
-│       └── .env.example
-│
-├── 🎮 .server/                # Arquivos do servidor Hytale
-│   ├── HytaleServer.jar       # (não commitado - muito grande)
-│   ├── HytaleServer.aot       # (não commitado - muito grande)
-│   └── Assets.zip             # (não commitado - muito grande)
-│
-├── 📁 data/                   # Dados persistentes
+├── 🎮 Servidor Hytale         # O jogo rodando em Docker
+├── 📊 Uptime Kuma             # Painel de monitoramento (porta 3001)
+├── 🤖 Bot Discord             # Notificações automáticas no Discord
+├── 📁 data/                   # Dados persistentes (mundos, configs)
 │   ├── universe/              # Mundo do jogo
 │   ├── mods/                  # Mods instalados
 │   ├── logs/                  # Logs do servidor
 │   └── uptime-kuma/           # Dados do Kuma
-│
-├── 🔧 scripts/                # Scripts de manutenção
-│   ├── maintenance.sh         # Painel interativo de gerenciamento
-│   └── manage.sh              # Utilitários diversos
-│
-├── 🛠️ tools/                  # Ferramentas e binários
-│   ├── hytale-downloader      # Downloader oficial do Hytale
-│   ├── cloudflared.deb        # Cloudflare Tunnel
-│   └── .hytale-credentials    # Credenciais (não commitado)
-│
-├── 📚 docs/                   # Documentação
-│   ├── README.md              # Este arquivo
-│   ├── LICENSE                # Licença MIT
-│   └── OfficialDocumentation.md
-│
-├── 💾 backups/                # Backups automáticos
-│
 ├── 🐳 docker-compose.yml      # Orquestração de todos os serviços
-├── 📝 .env                    # Configurações (não commitado)
-└── 🔒 .gitignore              # Arquivos ignorados pelo Git
+└── 📝 .env                    # Suas configurações (não commitado)
 ```
 
 ---

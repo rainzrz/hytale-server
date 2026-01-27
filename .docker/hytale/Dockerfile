@@ -14,12 +14,12 @@ RUN mkdir -p /server/mods /server/universe /server/logs /server/.cache \
     && chown -R hytale:hytale /server
 
 # Copy server files
-COPY --chown=hytale:hytale HytaleServer.jar /server/
-COPY --chown=hytale:hytale HytaleServer.aot /server/
-COPY --chown=hytale:hytale Assets.zip /server/
+COPY --chown=hytale:hytale .server/HytaleServer.jar /server/
+COPY --chown=hytale:hytale .server/HytaleServer.aot /server/
+COPY --chown=hytale:hytale .server/Assets.zip /server/
 
 # Copy entrypoint script
-COPY --chown=hytale:hytale entrypoint.sh /server/
+COPY --chown=hytale:hytale .docker/hytale/entrypoint.sh /server/
 RUN chmod +x /server/entrypoint.sh
 
 # Switch to non-root user

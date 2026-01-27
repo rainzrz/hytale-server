@@ -2,11 +2,9 @@ services:
   hytale-server:
     build:
       context: .
-      dockerfile: .docker/hytale/Dockerfile
+      dockerfile: Dockerfile
     container_name: hytale-server
     restart: unless-stopped
-    networks:
-      - hytale-network
 
     ports:
       # QUIC protocol uses UDP
@@ -41,41 +39,3 @@ services:
     # For interactive console (authentication)
     stdin_open: true
     tty: true
-
-  uptime-kuma:
-    image: louislam/uptime-kuma:1
-    container_name: uptime-kuma
-    restart: unless-stopped
-    networks:
-      - hytale-network
-    ports:
-      - "3001:3001"
-    volumes:
-      - ./data/uptime-kuma:/app/data
-    healthcheck:
-      test: ["CMD", "node", "extra/healthcheck.js"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 180s
-
-  discord-bot:
-    build:
-      context: .
-      dockerfile: .docker/discord-bot/Dockerfile
-    container_name: discord-bot
-    restart: unless-stopped
-    networks:
-      - hytale-network
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
-      - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
-      - KUMA_API_KEY=${KUMA_API_KEY}
-      - KUMA_URL=${KUMA_URL:-http://uptime-kuma:3001/api/status-page/heartbeat/hytale}
-    depends_on:
-      - uptime-kuma
-      - hytale-server
-
-networks:
-  hytale-network:
-    driver: bridge

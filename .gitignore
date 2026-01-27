@@ -1,35 +1,83 @@
-# Server files (download separately - too large for git)
-HytaleServer.jar
-HytaleServer.aot
-Assets.zip
+# ====================================
+# SERVIDOR HYTALE
+# ====================================
+# Arquivos do servidor (muito grandes para git)
+.server/HytaleServer.jar
+.server/HytaleServer.aot
+.server/Assets.zip
 
 # Hytale Downloader
-hytale-downloader-*
-QUICKSTART.md
+tools/hytale-downloader-*
+tools/.hytale-downloader-credentials.json
 .hytale-downloader-credentials.json
+QUICKSTART.md
 
-# Downloaded files
-*.zip
-Server/
-start.bat
-start.sh
-
-# Persistent data
+# ====================================
+# DADOS E CONFIGURAÇÕES
+# ====================================
+# Dados persistentes
 data/
 
-# Environment files
+# Backups
+backups/*.tar.gz
+backups/*.zip
+
+# Environment files (configurações sensíveis)
 .env
 **/.env
 !.env.example
 !**/.env.example
 
-# Logs
-*.log
+# ====================================
+# FERRAMENTAS E BINÁRIOS
+# ====================================
+# Cloudflared
+tools/cloudflared.deb
+tools/cloudflared
 
-# OS files
+# Binários diversos
+*.deb
+*.rpm
+*.exe
+
+# ====================================
+# LOGS E TEMPORÁRIOS
+# ====================================
+*.log
+*.tmp
+*.temp
+
+# ====================================
+# SISTEMA OPERACIONAL
+# ====================================
 .DS_Store
 Thumbs.db
+*.swp
+*~
 
-# IDE
+# ====================================
+# IDEs E EDITORES
+# ====================================
 .vscode/
 .idea/
+*.code-workspace
+
+# Claude Code (apenas configurações locais)
+.claude/settings.local.json
+
+# ====================================
+# DOCKER
+# ====================================
+# Não ignorar Dockerfiles
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+
+# ====================================
+# OUTROS
+# ====================================
+# Arquivos baixados
+downloads/
+Server/
+start.bat
+start.sh
