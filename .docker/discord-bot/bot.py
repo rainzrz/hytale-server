@@ -135,6 +135,50 @@ async def checar_hytale_server():
         print("[DEBUG] Erro ao checar hytale-server:", e)
         return False
 
+
+def obter_ultimo_backup():
+    try:
+        import glob
+        backups_dir = "/backups"
+
+        if not os.path.exists(backups_dir):
+            return "Nenhum backup encontrado"
+
+        # Lista todos os arquivos de backup
+        backups = glob.glob(f"{backups_dir}/hytale-backup-*.tar.gz")
+
+        if not backups:
+            return "Nenhum backup encontrado"
+
+        # Pega o backup mais recente
+        ultimo_backup = max(backups, key=os.path.getmtime)
+        timestamp = os.path.getmtime(ultimo_backup)
+        data_backup = datetime.fromtimestamp(timestamp)
+
+        return data_backup.strftime("%d/%m/%Y às %H:%M")
+
+    except Exception as e:
+        print("[DEBUG] Erro ao obter último backup:", e)
+        return "Erro ao verificar"
+
+
+def obter_versao_servidor():
+    try:
+        jar_path = "/server/HytaleServer.jar"
+
+        if not os.path.exists(jar_path):
+            return "N/A"
+
+        timestamp = os.path.getmtime(jar_path)
+        data_versao = datetime.fromtimestamp(timestamp)
+
+        return data_versao.strftime("%d/%m/%Y")
+
+    except Exception as e:
+        print("[DEBUG] Erro ao obter versão do servidor:", e)
+        return "N/A"
+
+
 # =======================
 # EMBED
 # =======================
@@ -188,6 +232,22 @@ def criar_embed(status, tudo_ok):
         inline=False
     )
 
+    # Informações adicionais
+    ultimo_backup = obter_ultimo_backup()
+    versao_servidor = obter_versao_servidor()
+
+    embed.add_field(
+        name="Último Backup",
+        value=ultimo_backup,
+        inline=True
+    )
+
+    embed.add_field(
+        name="Versão do Servidor",
+        value=versao_servidor,
+        inline=True
+    )
+
     #embed.set_image(url="https://hytale.com/static/images/logo.png")
     embed.set_image(url="https://i.ibb.co/NdsxQwB7/NOR-Hytale-Logo.png")
     embed.set_footer(text="Monitoramento automático | NOR")
@@ -212,10 +272,14 @@ async def checar_status():
         "cloudflare": await checar_cloudflare(),
         "docker": await checar_docker(),
         "network": await checar_network(),
-        "hytale": await checar_hytale_server()
+        "hytale": await checar_hytale_server(),
+        "ultimo_backup": obter_ultimo_backup(),
+        "versao": obter_versao_servidor()
     }
 
-    estado_geral = all(status_atual.values())
+    # Verifica estado geral apenas dos serviços (exclui backup e versão)
+    servicos = {k: v for k, v in status_atual.items() if k not in ["ultimo_backup", "versao"]}
+    estado_geral = all(servicos.values())
     print("[DEBUG] Status atual:", status_atual)
 
     if status_message_id is None:
