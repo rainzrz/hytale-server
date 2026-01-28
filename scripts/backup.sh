@@ -13,6 +13,10 @@ PROJECT_DIR="/home/rainz/hytale-server"
 DATA_DIR="$PROJECT_DIR/data"
 BACKUP_DIR="$PROJECT_DIR/backups"
 
+# Google Drive via rclone (deixe vazio para desabilitar)
+# Formato: "remote:caminho" (ex: "gdrive:Backups/Hytale")
+GDRIVE_BACKUP_PATH="gdrive:Backups/Hytale"
+
 # Funções
 print_header() {
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${RESET}"
@@ -289,6 +293,53 @@ create_backup() {
     fi
 }
 
+# Upload para Google Drive
+upload_to_gdrive() {
+    local backup_file="$1"
+
+    # Verifica se o Google Drive está configurado
+    if [ -z "$GDRIVE_BACKUP_PATH" ]; then
+        return 0
+    fi
+
+    print_step "Fazendo upload para Google Drive..."
+    echo ""
+
+    # Verifica se rclone está instalado
+    if ! command -v rclone &> /dev/null; then
+        print_warning "rclone não está instalado"
+        echo -e "  ${YELLOW}Para habilitar backup no Google Drive, instale o rclone:${RESET}"
+        echo -e "  ${CYAN}curl https://rclone.org/install.sh | sudo bash${RESET}"
+        echo ""
+        return 1
+    fi
+
+    # Extrai o remote do caminho (parte antes do :)
+    local remote=$(echo "$GDRIVE_BACKUP_PATH" | cut -d: -f1)
+
+    # Verifica se o remote está configurado
+    if ! rclone listremotes | grep -q "^${remote}:$"; then
+        print_warning "Google Drive não está configurado no rclone"
+        echo -e "  ${YELLOW}Configure o Google Drive:${RESET}"
+        echo -e "  ${CYAN}rclone config${RESET}"
+        echo ""
+        return 1
+    fi
+
+    # Faz upload do arquivo
+    if rclone copy "$backup_file" "$GDRIVE_BACKUP_PATH" --progress; then
+        echo ""
+        print_success "Backup enviado para Google Drive!"
+        echo -e "  Local: ${CYAN}$GDRIVE_BACKUP_PATH/$(basename "$backup_file")${RESET}"
+        echo ""
+        return 0
+    else
+        print_error "Falha ao enviar backup para Google Drive"
+        echo ""
+        return 1
+    fi
+}
+
 # Reinicia servidor se foi parado
 restart_server_if_needed() {
     if [ "$SERVER_WAS_STOPPED" = true ]; then
@@ -377,6 +428,7 @@ main() {
     choose_backup_content
 
     if create_backup; then
+        upload_to_gdrive "$BACKUP_FILE_PATH"
         restart_server_if_needed
         list_existing_backups
         show_summary "$BACKUP_FILE_PATH"
