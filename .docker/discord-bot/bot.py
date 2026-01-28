@@ -164,12 +164,14 @@ def obter_ultimo_backup():
 
 def obter_versao_servidor():
     try:
-        jar_path = "/server/HytaleServer.jar"
+        # Usa a data de modificação do diretório .server
+        # (atualizado quando nova versão é instalada)
+        server_dir = "/server"
 
-        if not os.path.exists(jar_path):
+        if not os.path.exists(server_dir):
             return "N/A"
 
-        timestamp = os.path.getmtime(jar_path)
+        timestamp = os.path.getmtime(server_dir)
         data_versao = datetime.fromtimestamp(timestamp)
 
         return data_versao.strftime("%d/%m/%Y")
