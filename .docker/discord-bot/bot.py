@@ -164,17 +164,25 @@ def obter_ultimo_backup():
 
 def obter_versao_servidor():
     try:
-        # Usa a data de modificação do diretório .server
-        # (atualizado quando nova versão é instalada)
-        server_dir = "/server"
+        import zipfile
+        # Extrai a versão do manifesto do JAR
+        jar_path = "/server/HytaleServer.jar"
 
-        if not os.path.exists(server_dir):
+        if not os.path.exists(jar_path):
             return "N/A"
 
-        timestamp = os.path.getmtime(server_dir)
-        data_versao = datetime.fromtimestamp(timestamp)
+        # Lê o arquivo MANIFEST.MF do JAR
+        with zipfile.ZipFile(jar_path, 'r') as jar:
+            with jar.open('META-INF/MANIFEST.MF') as manifest:
+                manifest_content = manifest.read().decode('utf-8')
 
-        return data_versao.strftime("%d/%m/%Y")
+        # Procura pela linha Implementation-Version
+        for line in manifest_content.split('\n'):
+            if line.startswith("Implementation-Version:"):
+                version = line.split(":", 1)[1].strip()
+                return f"Version: {version}"
+
+        return "N/A"
 
     except Exception as e:
         print("[DEBUG] Erro ao obter versão do servidor:", e)
