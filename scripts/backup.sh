@@ -144,6 +144,11 @@ ask_stop_server() {
         echo ""
         sleep 2
     fi
+
+    # Limpa tela para próxima etapa
+    sleep 1
+    clear
+    print_header
 }
 
 # Escolhe destino do backup
@@ -178,6 +183,11 @@ choose_backup_location() {
 
     print_success "Destino: $CHOSEN_BACKUP_DIR"
     echo ""
+
+    # Limpa tela para próxima etapa
+    sleep 1
+    clear
+    print_header
 }
 
 # Escolhe o que incluir no backup
@@ -236,38 +246,44 @@ choose_backup_content() {
             ;;
     esac
     echo ""
+
+    # Limpa tela para próxima etapa
+    sleep 1
+    clear
+    print_header
 }
 
 # Cria o backup
 create_backup() {
     local timestamp=$(date +%Y%m%d-%H%M%S)
-    local backup_file="$CHOSEN_BACKUP_DIR/hytale-backup-${BACKUP_NAME}-${timestamp}.tar.gz"
+    BACKUP_FILE_PATH="$CHOSEN_BACKUP_DIR/hytale-backup-${BACKUP_NAME}-${timestamp}.tar.gz"
 
     print_step "Criando backup..."
-    echo -e "  Arquivo: $(basename $backup_file)"
+    echo -e "  Arquivo: $(basename "$BACKUP_FILE_PATH")"
     echo ""
 
     cd "$PROJECT_DIR"
 
     # Cria o backup com barra de progresso
-    if tar -czf "$backup_file" $BACKUP_CONTENT 2>/dev/null; then
+    if tar -czf "$BACKUP_FILE_PATH" $BACKUP_CONTENT 2>/dev/null; then
         echo ""
         print_success "Backup criado com sucesso!"
 
         # Mostra informações do backup
-        local backup_size=$(du -h "$backup_file" | cut -f1)
+        local backup_size=$(du -h "$BACKUP_FILE_PATH" | cut -f1)
         echo ""
         echo -e "${GREEN}════════════════════════════════════════════════════════${RESET}"
-        echo -e "  Arquivo: ${CYAN}$(basename $backup_file)${RESET}"
+        echo -e "  Arquivo: ${CYAN}$(basename "$BACKUP_FILE_PATH")${RESET}"
         echo -e "  Tamanho: ${GREEN}$backup_size${RESET}"
-        echo -e "  Local: ${CYAN}$backup_file${RESET}"
+        echo -e "  Local: ${CYAN}$BACKUP_FILE_PATH${RESET}"
         echo -e "${GREEN}════════════════════════════════════════════════════════${RESET}"
         echo ""
+        return 0
     else
         print_error "Falha ao criar backup"
 
         # Tenta limpar arquivo parcial
-        [ -f "$backup_file" ] && rm -f "$backup_file"
+        [ -f "$BACKUP_FILE_PATH" ] && rm -f "$BACKUP_FILE_PATH"
 
         return 1
     fi
@@ -326,6 +342,8 @@ list_existing_backups() {
 
 # Resumo final
 show_summary() {
+    local backup_file="$1"
+
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${RESET}"
     echo -e "${GREEN}║            BACKUP CONCLUÍDO COM SUCESSO                ║${RESET}"
@@ -334,16 +352,16 @@ show_summary() {
     echo "Como restaurar este backup:"
     echo ""
     echo "  1. Pare o servidor:"
-    echo -e "     ${CYAN}docker-compose down${RESET}"
+    echo -e "     ${CYAN}docker compose down${RESET}"
     echo ""
     echo "  2. Faça backup dos dados atuais (segurança):"
     echo -e "     ${CYAN}mv data data.old${RESET}"
     echo ""
     echo "  3. Extraia o backup:"
-    echo -e "     ${CYAN}tar -xzf $(basename $backup_file)${RESET}"
+    echo -e "     ${CYAN}tar -xzf $(basename "$backup_file")${RESET}"
     echo ""
     echo "  4. Reinicie o servidor:"
-    echo -e "     ${CYAN}docker-compose up -d${RESET}"
+    echo -e "     ${CYAN}docker compose up -d${RESET}"
     echo ""
 }
 
@@ -361,7 +379,7 @@ main() {
     if create_backup; then
         restart_server_if_needed
         list_existing_backups
-        show_summary
+        show_summary "$BACKUP_FILE_PATH"
     else
         print_error "Backup falhou!"
         restart_server_if_needed
