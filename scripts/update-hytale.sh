@@ -193,10 +193,17 @@ download_new_version() {
             echo ""
             print_success "Extração concluída!"
 
+            # Move arquivos do subdiretório Server/ para a raiz
+            if [ -d "Server" ]; then
+                print_step "Movendo arquivos do subdiretório Server/..."
+                mv Server/* . 2>/dev/null
+                rm -rf Server
+            fi
+
             # Remove o ZIP e credentials temporários
             rm -f "$zip_file" .hytale-downloader-credentials.json
 
-            # Mostra arquivos baixados
+            # Mostra arquivos instalados
             print_step "Arquivos instalados:"
             if [ -f "HytaleServer.jar" ]; then
                 local jar_size=$(du -h "HytaleServer.jar" | cut -f1)
