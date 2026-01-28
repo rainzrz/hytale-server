@@ -281,6 +281,20 @@ show_logs() {
     echo ""
 }
 
+# Reinicia Discord bot
+restart_discord_bot() {
+    print_step "Reiniciando Discord bot para atualizar versão..."
+    cd "$PROJECT_DIR"
+
+    if docker compose restart discord-bot 2>/dev/null || docker-compose restart discord-bot 2>/dev/null; then
+        print_success "Discord bot reiniciado"
+    else
+        print_warning "Não foi possível reiniciar o Discord bot automaticamente"
+        echo -e "  ${YELLOW}Reinicie manualmente: docker compose restart discord-bot${RESET}"
+    fi
+    echo ""
+}
+
 # Rollback em caso de erro
 rollback() {
     print_warning "Iniciando rollback..."
@@ -349,6 +363,7 @@ main() {
     rebuild_docker
     start_server
     show_logs
+    restart_discord_bot
     show_summary
 }
 
