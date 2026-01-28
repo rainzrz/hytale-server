@@ -168,23 +168,47 @@ download_new_version() {
     mkdir -p "$SERVER_DIR"
     cd "$SERVER_DIR"
 
-    if "$DOWNLOADER" download; then
+    # Baixa o ZIP
+    if "$DOWNLOADER"; then
         echo ""
         print_success "Download concluído!"
 
-        # Mostra arquivos baixados
-        print_step "Arquivos baixados:"
-        if [ -f "HytaleServer.jar" ]; then
-            local jar_size=$(du -h "HytaleServer.jar" | cut -f1)
-            echo -e "  ✓ HytaleServer.jar (${jar_size})"
+        # Encontra o arquivo ZIP baixado
+        local zip_file=$(ls -t *.zip 2>/dev/null | head -n1)
+        if [ -z "$zip_file" ]; then
+            print_error "Arquivo ZIP não encontrado"
+            print_warning "Restaurando backup..."
+            rollback
+            exit 1
         fi
-        if [ -f "HytaleServer.aot" ]; then
-            local aot_size=$(du -h "HytaleServer.aot" | cut -f1)
-            echo -e "  ✓ HytaleServer.aot (${aot_size})"
-        fi
-        if [ -f "Assets.zip" ]; then
-            local assets_size=$(du -h "Assets.zip" | cut -f1)
-            echo -e "  ✓ Assets.zip (${assets_size})"
+
+        # Extrai o ZIP
+        print_step "Extraindo arquivos..."
+        if unzip -o "$zip_file" > /dev/null 2>&1; then
+            print_success "Extração concluída!"
+
+            # Remove o ZIP e credentials temporários
+            rm -f "$zip_file" .hytale-downloader-credentials.json
+
+            # Mostra arquivos baixados
+            print_step "Arquivos instalados:"
+            if [ -f "HytaleServer.jar" ]; then
+                local jar_size=$(du -h "HytaleServer.jar" | cut -f1)
+                echo -e "  ✓ HytaleServer.jar (${jar_size})"
+            fi
+            if [ -f "HytaleServer.aot" ]; then
+                local aot_size=$(du -h "HytaleServer.aot" | cut -f1)
+                echo -e "  ✓ HytaleServer.aot (${aot_size})"
+            fi
+            if [ -f "Assets.zip" ]; then
+                local assets_size=$(du -h "Assets.zip" | cut -f1)
+                echo -e "  ✓ Assets.zip (${assets_size})"
+            fi
+        else
+            print_error "Falha ao extrair arquivos"
+            print_warning "Restaurando backup..."
+            rollback
+            exit 1
         fi
     else
         print_error "Falha ao baixar nova versão"
