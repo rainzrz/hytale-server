@@ -128,8 +128,12 @@ stop_server() {
     cd "$PROJECT_DIR"
 
     if docker ps --format '{{.Names}}' | grep -q "^hytale-server$"; then
-        docker-compose stop hytale-server
-        print_success "Servidor parado"
+        if docker compose stop hytale-server 2>/dev/null || docker-compose stop hytale-server 2>/dev/null; then
+            print_success "Servidor parado"
+        else
+            print_error "Falha ao parar servidor"
+            exit 1
+        fi
     else
         print_warning "Servidor já estava parado"
     fi
@@ -196,7 +200,7 @@ rebuild_docker() {
     print_step "Reconstruindo imagem Docker..."
     cd "$PROJECT_DIR"
 
-    if docker-compose build hytale-server; then
+    if docker compose build hytale-server 2>/dev/null || docker-compose build hytale-server 2>/dev/null; then
         print_success "Imagem Docker reconstruída"
     else
         print_error "Falha ao reconstruir imagem Docker"
@@ -212,7 +216,7 @@ start_server() {
     print_step "Iniciando servidor Hytale..."
     cd "$PROJECT_DIR"
 
-    if docker-compose up -d hytale-server; then
+    if docker compose up -d hytale-server 2>/dev/null || docker-compose up -d hytale-server 2>/dev/null; then
         print_success "Servidor iniciado"
     else
         print_error "Falha ao iniciar servidor"
@@ -236,7 +240,7 @@ show_logs() {
     echo ""
 
     print_success "Para ver logs em tempo real, use:"
-    echo -e "  ${CYAN}docker-compose logs -f hytale-server${RESET}"
+    echo -e "  ${CYAN}docker compose logs -f hytale-server${RESET}"
     echo ""
 }
 
@@ -257,8 +261,8 @@ rollback() {
 
         # Rebuild com versão antiga
         cd "$PROJECT_DIR"
-        docker-compose build hytale-server
-        docker-compose up -d hytale-server
+        docker compose build hytale-server 2>/dev/null || docker-compose build hytale-server
+        docker compose up -d hytale-server 2>/dev/null || docker-compose up -d hytale-server
 
         print_success "Servidor revertido para versão anterior"
     else
@@ -275,21 +279,21 @@ show_summary() {
     echo ""
     echo "Próximos passos:"
     echo "  1️⃣  Verificar se o servidor está rodando:"
-    echo -e "     ${CYAN}docker-compose ps${RESET}"
+    echo -e "     ${CYAN}docker compose ps${RESET}"
     echo ""
     echo "  2️⃣  Monitorar logs em tempo real:"
-    echo -e "     ${CYAN}docker-compose logs -f hytale-server${RESET}"
+    echo -e "     ${CYAN}docker compose logs -f hytale-server${RESET}"
     echo ""
     echo "  3️⃣  Testar conexão no jogo:"
     echo -e "     ${CYAN}186.219.130.224:25565${RESET}"
     echo ""
     echo "  4️⃣  Em caso de problemas, reverta manualmente:"
     echo -e "     ${YELLOW}cd $PROJECT_DIR${RESET}"
-    echo -e "     ${YELLOW}docker-compose stop hytale-server${RESET}"
+    echo -e "     ${YELLOW}docker compose stop hytale-server${RESET}"
     echo -e "     ${YELLOW}rm -rf .server${RESET}"
     echo -e "     ${YELLOW}mv .server.backup-XXXXXX .server${RESET}"
-    echo -e "     ${YELLOW}docker-compose build hytale-server${RESET}"
-    echo -e "     ${YELLOW}docker-compose up -d hytale-server${RESET}"
+    echo -e "     ${YELLOW}docker compose build hytale-server${RESET}"
+    echo -e "     ${YELLOW}docker compose up -d hytale-server${RESET}"
     echo ""
 }
 
