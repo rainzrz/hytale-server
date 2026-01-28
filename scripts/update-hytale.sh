@@ -75,13 +75,22 @@ show_current_version() {
     print_step "Versão atual instalada:"
 
     if [ -f "$SERVER_DIR/HytaleServer.jar" ]; then
+        # Extrai versão do manifesto
+        local version=$(unzip -p "$SERVER_DIR/HytaleServer.jar" META-INF/MANIFEST.MF 2>/dev/null | grep "Implementation-Version:" | cut -d' ' -f2 | tr -d '\r')
+
+        if [ -n "$version" ]; then
+            echo -e "  📦 Versão: ${GREEN}$version${RESET}"
+        else
+            local jar_date=$(stat -c %y "$SERVER_DIR/HytaleServer.jar" | cut -d' ' -f1)
+            echo -e "  📦 HytaleServer.jar: ${GREEN}instalado em $jar_date${RESET}"
+        fi
+
         local jar_size=$(du -h "$SERVER_DIR/HytaleServer.jar" | cut -f1)
-        local jar_date=$(stat -c %y "$SERVER_DIR/HytaleServer.jar" | cut -d' ' -f1)
-        echo -e "  📦 HytaleServer.jar: ${GREEN}$jar_size${RESET} (${jar_date})"
+        echo -e "  📦 Tamanho: ${jar_size}"
 
         if [ -f "$SERVER_DIR/Assets.zip" ]; then
             local assets_size=$(du -h "$SERVER_DIR/Assets.zip" | cut -f1)
-            echo -e "  📦 Assets.zip: ${GREEN}$assets_size${RESET}"
+            echo -e "  📦 Assets: ${assets_size}"
         fi
     else
         print_warning "Nenhuma versão instalada"
