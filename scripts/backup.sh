@@ -122,11 +122,19 @@ ask_stop_server() {
         print_step "Parando servidor Hytale..."
         cd "$PROJECT_DIR"
 
-        if docker-compose stop hytale-server 2>/dev/null; then
+        # Tenta docker compose (novo) ou docker-compose (antigo)
+        if docker compose stop hytale-server 2>/dev/null || docker-compose stop hytale-server 2>/dev/null; then
             print_success "Servidor parado"
             SERVER_WAS_STOPPED=true
         else
-            print_warning "Não foi possível parar o servidor (pode já estar parado)"
+            print_warning "Não foi possível parar o servidor"
+            echo -e "  ${YELLOW}Verifique se o Docker está rodando e se você está no diretório correto${RESET}"
+            echo ""
+            read -p "Deseja continuar o backup mesmo assim? (s/N): " continue_anyway
+            if [[ ! "$continue_anyway" =~ ^[Ss]$ ]]; then
+                print_error "Backup cancelado"
+                exit 1
+            fi
             SERVER_WAS_STOPPED=false
         fi
         echo ""
@@ -274,8 +282,12 @@ restart_server_if_needed() {
         if [[ ! "$restart" =~ ^[Nn]$ ]]; then
             print_step "Reiniciando servidor Hytale..."
             cd "$PROJECT_DIR"
-            docker-compose start hytale-server
-            print_success "Servidor reiniciado"
+            if docker compose start hytale-server 2>/dev/null || docker-compose start hytale-server 2>/dev/null; then
+                print_success "Servidor reiniciado"
+            else
+                print_error "Não foi possível reiniciar o servidor automaticamente"
+                echo -e "  ${YELLOW}Reinicie manualmente: docker compose up -d hytale-server${RESET}"
+            fi
         else
             print_warning "Servidor continua parado. Inicie manualmente quando necessário."
         fi
