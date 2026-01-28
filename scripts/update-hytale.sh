@@ -182,9 +182,15 @@ download_new_version() {
             exit 1
         fi
 
+        # Lista conteúdo do ZIP
+        print_step "Verificando conteúdo do arquivo..."
+        unzip -l "$zip_file"
+        echo ""
+
         # Extrai o ZIP
         print_step "Extraindo arquivos..."
-        if unzip -o "$zip_file" > /dev/null 2>&1; then
+        if unzip -o "$zip_file"; then
+            echo ""
             print_success "Extração concluída!"
 
             # Remove o ZIP e credentials temporários
