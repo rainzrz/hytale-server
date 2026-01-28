@@ -388,6 +388,27 @@ tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz data/
 cp -r data/ /caminho/do/backup/hytale-data-$(date +%Y%m%d)
 ```
 
+### Backup para Google Drive
+
+O script de backup suporta envio automático para Google Drive via rclone:
+
+```bash
+# 1. Configure o Google Drive (necessário apenas uma vez)
+# Veja: docs/GOOGLE_DRIVE_SETUP.md
+
+# 2. Execute o backup - será salvo localmente E no Google Drive
+./scripts/backup.sh
+```
+
+Os backups são salvos em dois locais:
+- **Local:** `/home/rainz/hytale-server/backups/`
+- **Google Drive:** `Backups/Hytale/` (configurável)
+
+Para desabilitar o backup no Google Drive, edite `scripts/backup.sh` e deixe vazio:
+```bash
+GDRIVE_BACKUP_PATH=""
+```
+
 ### Restauração
 
 ```bash
