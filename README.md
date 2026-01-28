@@ -1,230 +1,209 @@
-<div align="center">
+# NOR Hytale Server
 
-# 🎮 Nor Hytale Server
-
-### Servidor Hytale Profissional com Monitoramento e Notificações
-
-[![Status](https://img.shields.io/badge/status-online-brightgreen?style=for-the-badge)](https://norhytale.com)
-[![Docker](https://img.shields.io/badge/docker-ready-blue?style=for-the-badge&logo=docker)](https://www.docker.com/)
-[![Uptime](https://img.shields.io/badge/uptime-99.9%25-success?style=for-the-badge)](https://norhytale.com)
-[![Discord](https://img.shields.io/badge/discord-notificações-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
-
-[Jogar Agora](#conectar) • [Monitorar Status](#monitoramento) • [Suporte](#suporte)
-
-</div>
+Servidor Hytale dedicado com sistema completo de monitoramento e notificações automáticas via Discord.
 
 ---
 
-## 🚀 O que é isso?
+## Visão Geral
 
-Um servidor Hytale completo e pronto para uso, com:
+Este projeto fornece uma infraestrutura completa para hospedar um servidor Hytale com monitoramento em tempo real e notificações automáticas. Todos os componentes são executados em containers Docker, facilitando a implantação, manutenção e escalabilidade.
 
-- **🎮 Servidor Hytale** - Jogue com seus amigos 24/7
-- **📊 Uptime Kuma** - Monitore o status do servidor em tempo real
-- **💬 Bot Discord** - Receba notificações quando o servidor cair ou voltar
-- **🐳 Docker** - Tudo containerizado, fácil de gerenciar
+### Componentes Principais
 
-Tudo funciona junto, no mesmo ambiente, sem complicação.
+O projeto é composto por três serviços principais que trabalham de forma integrada:
+
+**Hytale Server**
+Servidor dedicado do jogo Hytale configurado para rodar 24/7. Utiliza o protocolo QUIC (UDP) na porta 25565 e suporta configurações customizadas de memória, mods e mundo persistente.
+
+**Uptime Kuma**
+Sistema de monitoramento que verifica continuamente o status do servidor Hytale e outros serviços. Fornece um dashboard web acessível para visualização de métricas e histórico de uptime.
+
+**Discord Bot**
+Bot personalizado que monitora a infraestrutura e envia notificações automáticas para um canal do Discord quando detecta mudanças de status (servidor online, offline ou problemas de conectividade).
 
 ---
 
-## ⚡ Início Rápido
+## Arquitetura
 
-### 1️⃣ Clone e Configure
+```
+Internet
+    |
+    +-- norhytale.com (Cloudflare Tunnel) --> Uptime Kuma Dashboard (porta 3001)
+    |
+    +-- 186.219.130.224:25565 (Direto) --> Hytale Server (UDP)
+    |
+Docker Network (hytale-network)
+    |
+    +-- hytale-server (container)
+    |   |-- Porta: 25565/UDP
+    |   |-- Volumes: universe, mods, logs, config
+    |   |-- Memória: 6-12GB (configurável)
+    |
+    +-- uptime-kuma (container)
+    |   |-- Porta: 3001/TCP
+    |   |-- Volume: dados persistentes
+    |   |-- Monitora: Cloudflare, Docker Host, Network, Hytale Server
+    |
+    +-- discord-bot (container)
+        |-- Verifica: DNS Cloudflare, Docker Host (SSH), Network (HTTP), Hytale (Docker)
+        |-- Intervalo: 30 segundos
+        |-- Notifica: Canal Discord configurado
+```
+
+### Fluxo de Funcionamento
+
+1. **Servidor Hytale** roda em um container isolado, expondo a porta 25565/UDP
+2. **Uptime Kuma** monitora o servidor via conexão UDP interna na rede Docker
+3. **Discord Bot** verifica múltiplos pontos da infraestrutura:
+   - Resolução DNS do domínio (norhytale.com)
+   - Conectividade do Docker Host (porta 22)
+   - Conectividade de rede externa (porta 80)
+   - Status do container Hytale via Docker API
+4. Quando detecta mudanças, o bot atualiza uma mensagem fixa no Discord com o status atual
+5. **Cloudflare Tunnel** roteia tráfego HTTPS do domínio para o dashboard do Uptime Kuma
+
+---
+
+## Estrutura de Diretórios
+
+```
+hytale-server/
+|
+|-- .docker/
+|   |-- hytale/
+|   |   |-- Dockerfile              # Imagem do servidor Hytale
+|   |   |-- entrypoint.sh           # Script de inicialização
+|   |   |-- .dockerignore
+|   |
+|   |-- discord-bot/
+|       |-- Dockerfile              # Imagem do bot Discord
+|       |-- bot.py                  # Código principal do bot
+|       |-- requirements.txt        # Dependências Python
+|
+|-- .server/
+|   |-- HytaleServer.jar            # Executável do servidor (80MB)
+|   |-- HytaleServer.aot            # Cache de otimização AOT (118MB)
+|   |-- Assets.zip                  # Recursos do jogo (3.3GB)
+|
+|-- data/
+|   |-- universe/                   # Mundo do jogo (persistente)
+|   |-- mods/                       # Mods instalados
+|   |-- logs/                       # Logs do servidor
+|   |-- .cache/                     # Cache temporário
+|   |-- config.json                 # Configuração do servidor
+|   |-- permissions.json            # Permissões de jogadores
+|   |-- whitelist.json              # Lista de jogadores permitidos
+|   |-- bans.json                   # Jogadores banidos
+|   |-- uptime-kuma/                # Dados do Uptime Kuma
+|
+|-- scripts/
+|   |-- maintenance.sh              # Painel interativo de manutenção
+|   |-- update-hytale.sh            # Script de atualização automática
+|
+|-- tools/
+|   |-- hytale-downloader-linux-amd64  # Downloader oficial
+|   |-- cloudflared.deb             # Cloudflare Tunnel daemon
+|   |-- .hytale-downloader-credentials.json
+|
+|-- docs/
+|   |-- OfficialDocumentation.md    # Documentação oficial Hytale
+|
+|-- docker-compose.yml              # Orquestração de serviços
+|-- .env                            # Variáveis de ambiente (não versionado)
+|-- .gitignore
+|-- README.md
+```
+
+---
+
+## Requisitos do Sistema
+
+- **Sistema Operacional:** Linux (testado em Ubuntu/Debian)
+- **Docker:** versão 20.10 ou superior
+- **Docker Compose:** versão 1.29 ou superior
+- **RAM:** Mínimo 8GB, recomendado 16GB+
+- **Disco:** Mínimo 10GB livres (para servidor + backups)
+- **Rede:** Porta 25565/UDP aberta no firewall
+
+---
+
+## Instalação
+
+### 1. Clonar o Repositório
 
 ```bash
-git clone https://github.com/yourusername/hytale-server.git
+git clone https://github.com/rainzrz/hytale-server.git
 cd hytale-server
 ```
 
-### 2️⃣ Baixe os Arquivos do Jogo
+### 2. Baixar Arquivos do Servidor
 
 ```bash
-chmod +x hytale-downloader-linux-amd64
-./hytale-downloader-linux-amd64
+cd .server
+../tools/hytale-downloader-linux-amd64 download
+cd ..
 ```
 
-### 3️⃣ Configure as Variáveis
+Isso baixará:
+- HytaleServer.jar (executável principal)
+- HytaleServer.aot (cache de otimização)
+- Assets.zip (recursos do jogo)
 
-Edite o arquivo `.env` e adicione suas credenciais:
+### 3. Configurar Variáveis de Ambiente
+
+Copie o arquivo de exemplo e edite com suas credenciais:
 
 ```bash
+cp .env.example .env
 nano .env
 ```
 
-```env
-# Discord (obtenha em https://discord.com/developers/applications)
-DISCORD_TOKEN=seu_token_aqui
-DISCORD_CHANNEL_ID=seu_canal_id_aqui
+Configurações obrigatórias:
 
-# Uptime Kuma (configure depois de iniciar)
-KUMA_API_KEY=sua_api_key_aqui
+```env
+# Discord Bot
+DISCORD_TOKEN=seu_token_aqui
+DISCORD_CHANNEL_ID=id_do_canal_aqui
+
+# Uptime Kuma (configure após primeira inicialização)
+KUMA_API_KEY=sua_api_key
+KUMA_URL=http://uptime-kuma:3001
+KUMA_MONITOR_ID=1
+KUMA_STATUS_SLUG=hytale
+
+# Servidor Hytale
+JAVA_OPTS=-Xms6G -Xmx12G
+SERVER_PORT=25565
+USE_AOT_CACHE=true
+EXTRA_ARGS=
 ```
 
-### 4️⃣ Inicie Tudo
+### 4. Iniciar Serviços
 
 ```bash
 docker-compose up -d --build
 ```
 
-Pronto! Seu servidor está online. 🎉
-
----
-
-## 🎮 Conectar
-
-### Para Jogar
-
-```
-norhytale.com:25565
-```
-
-Ou localmente:
-
-```
-192.168.1.13:25565
-```
-
-### Para Monitorar
-
-**Online:** https://norhytale.com
-
-**Local:** http://192.168.1.13:3001
-
----
-
-## 📊 Monitoramento
-
-### Uptime Kuma
-
-Acesse o painel em `http://seu-servidor:3001` e configure:
-
-1. **Crie uma conta** de administrador
-2. **Adicione um monitor** para o servidor Hytale:
-   - Tipo: **UDP (Port)**
-   - Hostname: `hytale-server`
-   - Porta: `25565`
-   - Intervalo: `30 segundos`
-3. **Gere uma API Key** em Settings > API Keys
-4. **Adicione no `.env`** a chave `KUMA_API_KEY`
-5. **Reinicie o bot:** `docker-compose restart discord-bot`
-
-### Bot do Discord
-
-O bot envia notificações automáticas quando:
-
-- 🟢 Servidor fica **online**
-- 🔴 Servidor fica **offline**
-- ⏸️ Monitor é **pausado**
-
-<div align="center">
-  <img src="https://i.imgur.com/YourImageHere.png" alt="Discord Notification" width="400">
-</div>
-
----
-
-## 🛠️ Comandos Úteis
-
-### Gerenciar Containers
+### 5. Verificar Status
 
 ```bash
-# Ver status de todos os serviços
 docker-compose ps
-
-# Ver logs do servidor
-docker-compose logs -f hytale-server
-
-# Ver logs do bot
-docker-compose logs -f discord-bot
-
-# Ver logs do Kuma
-docker-compose logs -f uptime-kuma
-
-# Reiniciar tudo
-docker-compose restart
-
-# Parar tudo
-docker-compose down
-
-# Atualizar e reiniciar
-docker-compose up -d --build --force-recreate
-```
-
-### Verificar Status
-
-```bash
-# Status de todos os containers
-docker ps
-
-# Uso de recursos
-docker stats
-
-# Espaço em disco
-df -h
+docker-compose logs -f
 ```
 
 ---
 
-## 📂 O que tem aqui?
-
-```
-hytale-server/
-│
-├── 🐳 .docker/                # Configurações Docker
-│   ├── hytale/                # Container do servidor Hytale
-│   │   ├── Dockerfile
-│   │   ├── entrypoint.sh
-│   │   └── .dockerignore
-│   └── discord-bot/           # Container do bot Discord
-│       ├── Dockerfile
-│       ├── bot.py
-│       ├── requirements.txt
-│       └── .env.example
-│
-├── 🎮 .server/                # Arquivos do servidor Hytale
-│   ├── HytaleServer.jar       # (não commitado - muito grande)
-│   ├── HytaleServer.aot       # (não commitado - muito grande)
-│   └── Assets.zip             # (não commitado - muito grande)
-│
-├── 📁 data/                   # Dados persistentes
-│   ├── universe/              # Mundo do jogo
-│   ├── mods/                  # Mods instalados
-│   ├── logs/                  # Logs do servidor
-│   └── uptime-kuma/           # Dados do Kuma
-│
-├── 🔧 scripts/                # Scripts de manutenção
-│   └── maintenance.sh         # Painel interativo de gerenciamento
-│
-├── 🛠️ tools/                  # Ferramentas e binários
-│   ├── hytale-downloader      # Downloader oficial do Hytale
-│   ├── cloudflared.deb        # Cloudflare Tunnel
-│   └── .hytale-credentials    # Credenciais (não commitado)
-│
-├── 📚 docs/                   # Documentação
-│   ├── README.md              # Este arquivo
-│   ├── LICENSE                # Licença MIT
-│   └── OfficialDocumentation.md
-│
-├── 💾 backups/                # Backups automáticos
-│
-├── 🐳 docker-compose.yml      # Orquestração de todos os serviços
-├── 📝 .env                    # Configurações (não commitado)
-└── 🔒 .gitignore              # Arquivos ignorados pelo Git
-```
-
----
-
-## ⚙️ Configuração
+## Configuração
 
 ### Memória do Servidor
 
-Ajuste baseado na sua RAM disponível:
+Ajuste baseado na RAM disponível no seu servidor:
 
-| RAM do Servidor | Configuração |
-|----------------|--------------|
-| 8GB  | `-Xms2G -Xmx4G` |
-| 16GB | `-Xms6G -Xmx12G` ⭐ |
-| 32GB | `-Xms12G -Xmx24G` |
+| RAM Total | Configuração JAVA_OPTS |
+|-----------|------------------------|
+| 8GB       | -Xms2G -Xmx4G         |
+| 16GB      | -Xms6G -Xmx12G        |
+| 32GB      | -Xms12G -Xmx24G       |
 
 Edite no arquivo `.env`:
 
@@ -232,165 +211,384 @@ Edite no arquivo `.env`:
 JAVA_OPTS=-Xms6G -Xmx12G
 ```
 
-### Porta do Servidor
+### Configuração do Discord Bot
 
-```env
-SERVER_PORT=25565
+1. Acesse [Discord Developer Portal](https://discord.com/developers/applications)
+2. Crie uma nova aplicação
+3. Vá em "Bot" e crie um bot
+4. Copie o token e adicione em `DISCORD_TOKEN`
+5. Ative "Message Content Intent"
+6. Convide o bot para seu servidor com permissões de:
+   - Ler mensagens
+   - Enviar mensagens
+   - Embed links
+7. Copie o ID do canal onde deseja receber notificações e adicione em `DISCORD_CHANNEL_ID`
+
+### Configuração do Uptime Kuma
+
+1. Acesse `http://seu-servidor:3001`
+2. Crie uma conta de administrador
+3. Adicione um novo monitor:
+   - **Nome:** Hytale Server
+   - **Tipo:** UDP (Port)
+   - **Hostname:** hytale-server
+   - **Porta:** 25565
+   - **Intervalo de verificação:** 30 segundos
+4. Vá em Settings > API Keys
+5. Gere uma nova API Key
+6. Adicione a key no `.env` como `KUMA_API_KEY`
+7. Reinicie o bot: `docker-compose restart discord-bot`
+
+### Cloudflare Tunnel (Opcional)
+
+O projeto já vem configurado com Cloudflare Tunnel para expor o dashboard Uptime Kuma via HTTPS.
+
+Configuração atual (`/etc/cloudflared/config.yml`):
+
+```yaml
+tunnel: 2de19421-18aa-4fc5-a0ba-0e961ae4f505
+credentials-file: /root/.cloudflared/2de19421-18aa-4fc5-a0ba-0e961ae4f505.json
+
+ingress:
+  - hostname: norhytale.com
+    service: http://localhost:3001
+  - hostname: www.norhytale.com
+    service: http://localhost:3001
+  - service: http_status:404
 ```
-
-### Argumentos Extras
-
-```env
-EXTRA_ARGS=--disable-sentry --backup --backup-frequency 30
-```
-
-| Opção | O que faz |
-|-------|-----------|
-| `--disable-sentry` | Desativa relatórios de crash |
-| `--backup` | Ativa backups automáticos |
-| `--backup-frequency 30` | Faz backup a cada 30 minutos |
-| `--auth-mode offline` | Modo offline (sem login) |
 
 ---
 
-## 🔧 Solução de Problemas
+## Como Conectar
 
-### Bot não funciona
+### Para Jogar
 
-**Problema:** Bot não conecta ao Discord
+Use o IP direto do servidor no cliente do Hytale:
 
-**Solução:**
-```bash
-# Verifique se o token está correto
-nano .env
-
-# Veja os logs do bot
-docker-compose logs discord-bot
-
-# Reinicie o bot
-docker-compose restart discord-bot
+```
+186.219.130.224:25565
 ```
 
-### Servidor não inicia
+O domínio `norhytale.com:25565` não funciona porque o Cloudflare Tunnel não suporta UDP/QUIC. Use apenas o IP direto para jogar.
 
-**Problema:** Container fica reiniciando
+### Para Monitorar
 
-**Solução:**
+Acesse o dashboard de monitoramento:
+
+- **Online:** https://norhytale.com
+- **Local:** http://192.168.1.13:3001
+
+---
+
+## Manutenção
+
+### Painel Interativo
+
+Execute o script de manutenção para gerenciar os containers de forma visual:
+
 ```bash
-# Veja os logs
+./scripts/maintenance.sh
+```
+
+Funcionalidades:
+- Iniciar/Parar/Reiniciar containers individuais
+- Ver logs em tempo real
+- Ver estatísticas de recursos
+- Acessar shell dos containers
+- Reconstruir containers
+
+### Comandos Manuais
+
+```bash
+# Ver status de todos os serviços
+docker-compose ps
+
+# Ver logs de um serviço específico
 docker-compose logs -f hytale-server
+docker-compose logs -f discord-bot
+docker-compose logs -f uptime-kuma
 
-# Verifique se os arquivos existem
-ls -lh HytaleServer.jar Assets.zip
+# Reiniciar todos os serviços
+docker-compose restart
 
-# Desative o cache AOT se necessário
-nano .env
-# USE_AOT_CACHE=false
-```
+# Reiniciar um serviço específico
+docker-compose restart hytale-server
 
-### Kuma não monitora
+# Parar todos os serviços
+docker-compose down
 
-**Problema:** Monitor mostra offline mesmo com servidor rodando
+# Iniciar com rebuild
+docker-compose up -d --build
 
-**Solução:**
-- Verifique se o hostname está como `hytale-server` (nome do container)
-- Porta deve ser `25565` (ou a que você configurou)
-- Tipo deve ser **UDP (Port)**
-
----
-
-## 🎯 Portas Utilizadas
-
-| Porta | Serviço | Protocolo |
-|-------|---------|-----------|
-| **25565** | Servidor Hytale | UDP |
-| **3001** | Uptime Kuma | TCP |
-
-### Configurar Firewall
-
-```bash
-sudo ufw allow 25565/udp comment "Hytale Server"
-sudo ufw allow 3001/tcp comment "Uptime Kuma"
+# Ver uso de recursos
+docker stats
 ```
 
 ---
 
-## 💾 Backup & Restauração
+## Atualização do Servidor
 
-### Fazer Backup
+Quando uma nova versão do Hytale for lançada, use o script automatizado:
 
 ```bash
-# Criar backup com data
-tar -czvf backup-$(date +%Y%m%d).tar.gz data/
-
-# Ou copiar para outro lugar
-cp -r data/ /caminho/do/backup/
+./scripts/update-hytale.sh
 ```
 
-### Restaurar Backup
+O script realiza as seguintes operações automaticamente:
+
+1. Verifica requisitos (Docker rodando, downloader disponível)
+2. Mostra a versão atual instalada
+3. Pede confirmação antes de prosseguir
+4. Para o servidor Hytale (desconecta jogadores)
+5. Faz backup da versão atual (`.server.backup-YYYYMMDD-HHMMSS`)
+6. Baixa a nova versão usando o hytale-downloader
+7. Reconstrói a imagem Docker com os novos arquivos
+8. Reinicia o servidor
+9. Mostra logs para verificação
+10. Limpa backups antigos (mantém os 3 mais recentes)
+
+Em caso de falha, o script restaura automaticamente a versão anterior (rollback).
+
+### Atualização Manual
+
+Se preferir fazer manualmente:
 
 ```bash
-# Parar o servidor
+# 1. Parar o servidor
+docker-compose stop hytale-server
+
+# 2. Fazer backup
+mv .server .server.backup-$(date +%Y%m%d)
+
+# 3. Baixar nova versão
+mkdir .server
+cd .server
+../tools/hytale-downloader-linux-amd64 download
+cd ..
+
+# 4. Rebuild e reiniciar
+docker-compose build hytale-server
+docker-compose up -d hytale-server
+
+# 5. Verificar logs
+docker-compose logs -f hytale-server
+```
+
+---
+
+## Backup e Restauração
+
+### Backup Manual
+
+```bash
+# Criar backup completo com data
+tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz data/
+
+# Ou copiar diretório
+cp -r data/ /caminho/do/backup/hytale-data-$(date +%Y%m%d)
+```
+
+### Restauração
+
+```bash
+# Parar serviços
 docker-compose down
 
 # Restaurar dados
-tar -xzvf backup-20260127.tar.gz
+tar -xzf backup-20260127-143000.tar.gz
 
-# Iniciar novamente
+# Reiniciar
 docker-compose up -d
 ```
 
-### Backups Automáticos
+### Backup Automático do Jogo
 
-Ative no `.env`:
+O servidor Hytale suporta backups automáticos nativos. Ative no `.env`:
 
 ```env
 EXTRA_ARGS=--backup --backup-frequency 30
 ```
 
+Isso criará backups automáticos do mundo a cada 30 minutos dentro do container.
+
 ---
 
-## 🆘 Suporte
+## Solução de Problemas
 
-### Problemas Comuns
+### Servidor não inicia
 
-- **Bot não envia mensagens:** Verifique as permissões do bot no Discord
-- **Kuma não acessa API:** Certifique-se de que a API Key está correta no `.env`
-- **Servidor lento:** Aumente a memória no `JAVA_OPTS`
-- **Erro de permissão:** Execute `sudo chmod -R 777 data/`
+**Sintoma:** Container `hytale-server` fica reiniciando constantemente
 
-### Logs
-
-Sempre verifique os logs quando algo der errado:
+**Verificações:**
 
 ```bash
-docker-compose logs -f [nome-do-serviço]
+# Ver logs detalhados
+docker-compose logs -f hytale-server
+
+# Verificar se os arquivos existem
+ls -lh .server/
+
+# Verificar memória disponível
+free -h
+```
+
+**Soluções:**
+- Certifique-se de que os arquivos `HytaleServer.jar` e `Assets.zip` foram baixados
+- Verifique se há RAM suficiente (mínimo 8GB)
+- Ajuste `JAVA_OPTS` se necessário
+- Desative AOT cache se houver problemas: `USE_AOT_CACHE=false`
+
+### Discord Bot não conecta
+
+**Sintoma:** Bot não aparece online no Discord
+
+**Verificações:**
+
+```bash
+docker-compose logs discord-bot
+```
+
+**Soluções:**
+- Verifique se `DISCORD_TOKEN` está correto no `.env`
+- Certifique-se de que "Message Content Intent" está ativado no Discord Developer Portal
+- Verifique se `DISCORD_CHANNEL_ID` está correto
+- Reinicie o bot: `docker-compose restart discord-bot`
+
+### Uptime Kuma não monitora
+
+**Sintoma:** Monitor mostra servidor offline mesmo estando online
+
+**Soluções:**
+- Verifique se o hostname está como `hytale-server` (nome do container, não IP)
+- Porta deve ser `25565`
+- Tipo de monitor deve ser **UDP (Port)**, não TCP
+- Certifique-se de que ambos os containers estão na mesma rede Docker
+
+### Permissões negadas
+
+**Sintoma:** Erros de "permission denied" nos logs
+
+**Solução:**
+
+```bash
+sudo chown -R 1000:1000 data/
+```
+
+Ou, se necessário:
+
+```bash
+sudo chmod -R 755 data/
+```
+
+### Cloudflare Tunnel não funciona
+
+**Verificações:**
+
+```bash
+systemctl status cloudflared
+journalctl -u cloudflared -n 50
+```
+
+**Soluções:**
+- Verifique se o tunnel está autenticado
+- Certifique-se de que o arquivo de credenciais existe
+- Reinicie o serviço: `systemctl restart cloudflared`
+
+---
+
+## Portas Utilizadas
+
+| Porta | Serviço        | Protocolo | Descrição                    |
+|-------|----------------|-----------|------------------------------|
+| 25565 | Hytale Server  | UDP       | Conexão de jogadores (QUIC)  |
+| 3001  | Uptime Kuma    | TCP       | Dashboard web                |
+| 22    | Docker Host    | TCP       | Monitoramento SSH (interno)  |
+| 80    | Network Check  | TCP       | Verificação de conectividade |
+
+### Configurar Firewall
+
+```bash
+# Permitir porta do jogo
+sudo ufw allow 25565/udp comment "Hytale Server"
+
+# Permitir dashboard (opcional, se não usar Cloudflare Tunnel)
+sudo ufw allow 3001/tcp comment "Uptime Kuma"
+
+# Verificar regras
+sudo ufw status
 ```
 
 ---
 
-## 🌟 Recursos
+## Monitoramento do Discord Bot
 
-- ✅ Servidor Hytale dedicado 24/7
-- ✅ Monitoramento em tempo real
-- ✅ Notificações no Discord
-- ✅ Backups automáticos
-- ✅ Fácil gerenciamento com Docker
-- ✅ Acesso HTTPS seguro via Cloudflare
-- ✅ Dashboard de status público
+O bot executa 4 verificações a cada 30 segundos:
 
----
+1. **Cloudflare DNS:** Verifica se `norhytale.com` resolve corretamente
+2. **Docker Host:** Testa conexão SSH na porta 22 (192.168.1.13)
+3. **Network:** Verifica conectividade HTTP na porta 80 (IP público)
+4. **Hytale Server:** Verifica se o container está rodando via Docker API
 
-## 📜 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+O bot mantém uma mensagem fixa no Discord que é atualizada apenas quando o status muda, evitando spam no canal.
 
 ---
 
-<div align="center">
+## Controle de Versões
 
-**Feito com ❤️ para a comunidade Hytale**
+Este projeto utiliza Git com tags para marcar versões estáveis:
 
-[⬆ Voltar ao Topo](#-nor-hytale-server)
+```bash
+# Ver versões disponíveis
+git tag
 
-</div>
+# Voltar para uma versão estável
+git checkout v1.0-estavel
+
+# Criar nova tag ao finalizar mudanças
+git tag -a v2.0-fevereiro -m "Versão estável de fevereiro"
+git push --tags
+```
+
+Versões marcadas:
+- `v1.0-estavel`: Versão inicial estável de janeiro de 2026
+
+---
+
+## Tecnologias Utilizadas
+
+- **Java 25 JRE:** Runtime do servidor Hytale
+- **Docker & Docker Compose:** Containerização e orquestração
+- **Python 3.12:** Discord bot
+- **Discord.py:** Biblioteca para integração com Discord
+- **Uptime Kuma:** Sistema de monitoramento open-source
+- **Cloudflare Tunnel:** Proxy reverso seguro com HTTPS
+- **QUIC Protocol:** Protocolo de transporte UDP do Hytale
+- **Bash:** Scripts de automação
+
+---
+
+## Recursos
+
+- Servidor Hytale dedicado 24/7
+- Monitoramento em tempo real com dashboard web
+- Notificações automáticas no Discord
+- Sistema de backup automático
+- Scripts de manutenção e atualização
+- Acesso HTTPS seguro via Cloudflare
+- Containers isolados para segurança
+- Configuração via variáveis de ambiente
+- Documentação completa
+
+---
+
+## Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
+
+---
+
+## Autor
+
+Desenvolvido e mantido por NOR para a comunidade Hytale brasileira.
+
+Repositório: https://github.com/rainzrz/hytale-server
