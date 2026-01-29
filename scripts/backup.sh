@@ -340,6 +340,52 @@ upload_to_gdrive() {
     fi
 }
 
+# Limpa backups antigos do Google Drive
+cleanup_old_gdrive_backups() {
+    local keep_count=7
+
+    # Verifica se o Google Drive está configurado
+    if [ -z "$GDRIVE_BACKUP_PATH" ]; then
+        return 0
+    fi
+
+    print_step "Limpando backups antigos do Google Drive (mantendo os $keep_count mais recentes)..."
+
+    # Lista backups ordenados por data (mais recentes primeiro)
+    local backups=$(rclone lsf "$GDRIVE_BACKUP_PATH" --files-only 2>/dev/null | grep "hytale-backup-.*\.tar\.gz$" | sort -r)
+    local total_backups=$(echo "$backups" | grep -c "hytale-backup-")
+
+    if [ $total_backups -le $keep_count ]; then
+        print_info "Total de backups no Drive: $total_backups (dentro do limite)"
+        echo ""
+        return 0
+    fi
+
+    # Calcula quantos backups devem ser deletados
+    local to_delete=$((total_backups - keep_count))
+    print_info "Total de backups no Drive: $total_backups"
+    print_info "Backups a serem removidos: $to_delete"
+    echo ""
+
+    # Pula os N mais recentes e deleta os restantes
+    local count=0
+    echo "$backups" | while read -r backup; do
+        count=$((count + 1))
+        if [ $count -gt $keep_count ]; then
+            print_step "Removendo: $backup"
+            if rclone delete "$GDRIVE_BACKUP_PATH/$backup" 2>/dev/null; then
+                print_success "Removido: $backup"
+            else
+                print_warning "Falha ao remover: $backup"
+            fi
+        fi
+    done
+
+    echo ""
+    print_success "Limpeza concluída!"
+    echo ""
+}
+
 # Reinicia servidor se foi parado
 restart_server_if_needed() {
     if [ "$SERVER_WAS_STOPPED" = true ]; then
@@ -428,7 +474,9 @@ main() {
     choose_backup_content
 
     if create_backup; then
-        upload_to_gdrive "$BACKUP_FILE_PATH"
+        if upload_to_gdrive "$BACKUP_FILE_PATH"; then
+            cleanup_old_gdrive_backups
+        fi
         restart_server_if_needed
         list_existing_backups
         show_summary "$BACKUP_FILE_PATH"
