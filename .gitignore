@@ -2,6 +2,8 @@
 # SERVIDOR HYTALE
 # ====================================
 # Arquivos do servidor (muito grandes para git)
+.server/
+.server.backup-*/
 .server/HytaleServer.jar
 .server/HytaleServer.aot
 .server/Assets.zip
