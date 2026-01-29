@@ -350,6 +350,9 @@ show_summary() {
 
 # Main
 main() {
+    # Ativa modo de manutenção
+    "$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Atualização do servidor em andamento" 2>/dev/null || true
+
     clear
     print_header
 
@@ -365,6 +368,9 @@ main() {
     show_logs
     restart_discord_bot
     show_summary
+
+    # Desativa modo de manutenção
+    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
 }
 
 # Executa

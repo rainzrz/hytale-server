@@ -230,5 +230,11 @@ if ! docker ps > /dev/null 2>&1; then
     exit 1
 fi
 
+# Ativa modo de manutenção
+/home/rainz/hytale-server/scripts/maintenance-mode.sh enable "Manutenção manual em andamento" 2>/dev/null || true
+
+# Desativa modo de manutenção ao sair (trap)
+trap '/home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null || true' EXIT INT TERM
+
 # Iniciar menu principal
 main_menu

@@ -464,6 +464,9 @@ show_summary() {
 
 # Main
 main() {
+    # Ativa modo de manutenção
+    "$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Backup em andamento" 2>/dev/null || true
+
     clear
     print_header
 
@@ -483,8 +486,13 @@ main() {
     else
         print_error "Backup falhou!"
         restart_server_if_needed
+        # Desativa modo de manutenção mesmo em caso de erro
+        "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
         exit 1
     fi
+
+    # Desativa modo de manutenção
+    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
 }
 
 # Executa

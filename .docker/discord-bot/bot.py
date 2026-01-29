@@ -15,6 +15,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID_STR = os.getenv("DISCORD_CHANNEL_ID")
 
 STATUS_FILE = "status_message_id.txt"
+MAINTENANCE_FILE = "/tmp/hytale_maintenance.flag"
 
 if not TOKEN:
     print("ERRO: DISCORD_TOKEN não configurado")
@@ -189,17 +190,61 @@ def obter_versao_servidor():
         return "N/A"
 
 
+def esta_em_manutencao():
+    """Verifica se o servidor está em modo de manutenção"""
+    try:
+        if os.path.exists(MAINTENANCE_FILE):
+            with open(MAINTENANCE_FILE, 'r') as f:
+                motivo = f.read().strip()
+            return True, motivo if motivo else "Manutenção em andamento"
+        return False, ""
+    except Exception as e:
+        print("[DEBUG] Erro ao verificar manutenção:", e)
+        return False, ""
+
+
 # =======================
 # EMBED
 # =======================
 
 def criar_embed(status, tudo_ok):
-    if tudo_ok:
+    # Verifica se está em manutenção
+    em_manutencao, motivo_manutencao = esta_em_manutencao()
+
+    if em_manutencao:
+        embed = discord.Embed(
+            title="NOR Infrastructure",
+            description=f"🔧 **MANUTENÇÃO EM ANDAMENTO**\n\n{motivo_manutencao}",
+            color=discord.Color.from_rgb(59, 130, 246),  # Azul
+            timestamp=datetime.now()
+        )
+        # Em manutenção, todos os indicadores ficam azuis
+        embed.add_field(
+            name="Serviços Monitorados",
+            value=(
+                f"🔵 Cloudflare DNS\n"
+                f"🔵 Docker Host\n"
+                f"🔵 Network\n"
+                f"🔵 Hytale Server"
+            ),
+            inline=False
+        )
+    elif tudo_ok:
         embed = discord.Embed(
             title="NOR Infrastructure",
             description="Todos os serviços estão operando normalmente.",
             color=discord.Color.from_rgb(34, 197, 94),
             timestamp=datetime.now()
+        )
+        embed.add_field(
+            name="Serviços Monitorados",
+            value=(
+                f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
+                f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
+                f"{'🟢' if status['network'] else '🔴'} Network\n"
+                f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
+            ),
+            inline=False
         )
     else:
         embed = discord.Embed(
@@ -208,17 +253,16 @@ def criar_embed(status, tudo_ok):
             color=discord.Color.from_rgb(239, 68, 68),
             timestamp=datetime.now()
         )
-
-    embed.add_field(
-        name="Serviços Monitorados",
-        value=(
-            f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
-            f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
-            f"{'🟢' if status['network'] else '🔴'} Network\n"
-            f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
-        ),
-        inline=False
-    )
+        embed.add_field(
+            name="Serviços Monitorados",
+            value=(
+                f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
+                f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
+                f"{'🟢' if status['network'] else '🔴'} Network\n"
+                f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
+            ),
+            inline=False
+        )
 
     embed.add_field(
         name="IP Servidor",

@@ -41,9 +41,13 @@ log "=========================================="
 log "Iniciando backup automático"
 log "=========================================="
 
+# Ativa modo de manutenção
+"$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Backup automático em andamento" 2>/dev/null || true
+
 # Verifica se o diretório data existe
 if [ ! -d "$DATA_DIR" ]; then
     log_error "Diretório de dados não encontrado: $DATA_DIR"
+    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
     exit 1
 fi
 
@@ -63,6 +67,7 @@ if tar -czf "$BACKUP_FILE" data 2>&1 | tee -a "$LOG_FILE"; then
 else
     log_error "Falha ao criar backup"
     [ -f "$BACKUP_FILE" ] && rm -f "$BACKUP_FILE"
+    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
     exit 1
 fi
 
@@ -129,3 +134,6 @@ fi
 log "=========================================="
 log "Backup automático concluído com sucesso!"
 log "=========================================="
+
+# Desativa modo de manutenção
+"$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
