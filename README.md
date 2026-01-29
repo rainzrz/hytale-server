@@ -388,6 +388,26 @@ tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz data/
 cp -r data/ /caminho/do/backup/hytale-data-$(date +%Y%m%d)
 ```
 
+### Backup Automático Diário
+
+O sistema está configurado para fazer backup automático **todos os dias às 00:00**:
+
+- ✅ Backup completo do diretório `data/`
+- ✅ Upload automático para Google Drive
+- ✅ Mantém os 7 backups mais recentes (local e Drive)
+- ✅ Logs em `logs/backup-auto.log`
+
+```bash
+# Ver status do cron job
+crontab -l
+
+# Ver logs dos backups automáticos
+tail -f logs/backup-auto.log
+
+# Testar backup manualmente
+./scripts/backup-auto.sh
+```
+
 ### Backup para Google Drive
 
 O script de backup suporta envio automático para Google Drive via rclone:
@@ -396,15 +416,15 @@ O script de backup suporta envio automático para Google Drive via rclone:
 # 1. Configure o Google Drive (necessário apenas uma vez)
 # Veja: docs/GOOGLE_DRIVE_SETUP.md
 
-# 2. Execute o backup - será salvo localmente E no Google Drive
+# 2. Execute o backup interativo
 ./scripts/backup.sh
 ```
 
 Os backups são salvos em dois locais:
-- **Local:** `/home/rainz/hytale-server/backups/`
-- **Google Drive:** `Backups/Hytale/` (configurável)
+- **Local:** `/home/rainz/hytale-server/backups/` (mantém 7 mais recentes)
+- **Google Drive:** `Backups/Hytale/` (mantém 7 mais recentes)
 
-Para desabilitar o backup no Google Drive, edite `scripts/backup.sh` e deixe vazio:
+Para desabilitar o backup no Google Drive, edite os scripts e deixe vazio:
 ```bash
 GDRIVE_BACKUP_PATH=""
 ```
