@@ -572,6 +572,33 @@ O bot executa 4 verificações a cada 30 segundos:
 
 O bot mantém uma mensagem fixa no Discord que é atualizada apenas quando o status muda, evitando spam no canal.
 
+### Modo de Manutenção
+
+Durante manutenções, o Discord bot automaticamente exibe bolinhas azuis 🔵 indicando que o servidor está em manutenção. Este modo é ativado automaticamente pelos seguintes scripts:
+
+- ✅ `update-hytale.sh` - Durante atualizações do servidor
+- ✅ `backup.sh` - Durante backups manuais
+- ✅ `backup-auto.sh` - Durante backups automáticos
+- ✅ `maintenance.sh` - Durante manutenção manual
+
+**Controle manual do modo de manutenção:**
+
+```bash
+# Ativar modo de manutenção
+./scripts/maintenance-mode.sh enable "Motivo da manutenção"
+
+# Desativar modo de manutenção
+./scripts/maintenance-mode.sh disable
+
+# Ver status atual
+./scripts/maintenance-mode.sh status
+```
+
+Durante o modo de manutenção:
+- Todos os indicadores ficam azuis 🔵
+- Mensagem customizada é exibida no embed
+- Cor do embed muda para azul
+
 ---
 
 ## Controle de Versões
