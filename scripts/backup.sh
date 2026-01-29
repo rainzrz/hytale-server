@@ -1,168 +1,173 @@
 #!/bin/bash
 
-# Cores
-RESET='\033[0m'
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
+# Interactive Backup Script
+# Creates backups of Hytale server data with customization options
 
-# Diretórios
+# Colors - Blue and White theme
+RESET='\033[0m'
+BLUE='\033[38;5;39m'
+CYAN='\033[38;5;51m'
+WHITE='\033[1;37m'
+GRAY='\033[38;5;245m'
+
+# Reset colors on exit or interrupt and disable maintenance
+trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null > /dev/null; exit 130' INT TERM
+
+# Directories
 PROJECT_DIR="/home/rainz/hytale-server"
 DATA_DIR="$PROJECT_DIR/data"
 BACKUP_DIR="$PROJECT_DIR/backups"
 
-# Google Drive via rclone (deixe vazio para desabilitar)
-# Formato: "remote:caminho" (ex: "gdrive:Backups/Hytale")
+# Google Drive via rclone (leave empty to disable)
+# Format: "remote:path" (ex: "gdrive:Backups/Hytale")
 GDRIVE_BACKUP_PATH="gdrive:Backups/Hytale"
 
-# Funções
+# Functions
 print_header() {
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${CYAN}║           BACKUP DO SERVIDOR HYTALE - NOR              ║${RESET}"
+    echo -e "${CYAN}║           HYTALE SERVER BACKUP MANAGER                 ║${RESET}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${RESET}"
     echo ""
 }
 
 print_step() {
-    echo -e "${BLUE}▶${RESET} $1"
+    echo -e "${BLUE}[>]${RESET} $1"
 }
 
 print_success() {
-    echo -e "${GREEN}✓${RESET} $1"
+    echo -e "${BLUE}[OK]${RESET} $1"
 }
 
 print_error() {
-    echo -e "${RED}✗${RESET} $1"
+    echo -e "${GRAY}[ERROR]${RESET} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${RESET} $1"
+    echo -e "${GRAY}[WARN]${RESET} $1"
 }
 
 print_info() {
-    echo -e "${CYAN}ℹ${RESET} $1"
+    echo -e "${CYAN}[INFO]${RESET} $1"
 }
 
-# Verificações iniciais
+# Initial checks
 check_requirements() {
-    print_step "Verificando requisitos..."
+    print_step "Checking requirements..."
 
-    # Verifica se o diretório data existe
+    # Verify data directory exists
     if [ ! -d "$DATA_DIR" ]; then
-        print_error "Diretório de dados não encontrado: $DATA_DIR"
+        print_error "Data directory not found: $DATA_DIR"
         exit 1
     fi
 
-    # Verifica se há espaço em disco suficiente
+    # Check if there's enough disk space
     local data_size=$(du -sb "$DATA_DIR" | cut -f1)
     local available_space=$(df -B1 "$PROJECT_DIR" | tail -1 | awk '{print $4}')
 
     if [ "$available_space" -lt "$((data_size * 2))" ]; then
-        print_warning "Espaço em disco pode ser insuficiente"
-        echo -e "  Tamanho dos dados: $(du -sh "$DATA_DIR" | cut -f1)"
-        echo -e "  Espaço disponível: $(df -h "$PROJECT_DIR" | tail -1 | awk '{print $4}')"
+        print_warning "Disk space may be insufficient"
+        echo -e "  Data size: $(du -sh "$DATA_DIR" | cut -f1)"
+        echo -e "  Available space: $(df -h "$PROJECT_DIR" | tail -1 | awk '{print $4}')"
         echo ""
-        read -p "Deseja continuar mesmo assim? (s/N): " confirm
-        if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-            print_warning "Backup cancelado"
+        read -p "Continue anyway? (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[YySs]$ ]]; then
+            print_warning "Backup cancelled"
             exit 0
         fi
     fi
 
-    print_success "Requisitos verificados"
+    print_success "Requirements verified"
     echo ""
 }
 
-# Mostra informações do save
+# Show save information
 show_save_info() {
-    print_step "Informações do save atual:"
+    print_step "Current save information:"
     echo ""
 
-    # Tamanho total
+    # Total size
     local total_size=$(du -sh "$DATA_DIR" | cut -f1)
-    echo -e "  Tamanho total: ${GREEN}$total_size${RESET}"
+    echo -e "  Total size: ${CYAN}$total_size${RESET}"
 
-    # Detalhes por diretório
+    # Details per directory
     if [ -d "$DATA_DIR/universe" ]; then
         local universe_size=$(du -sh "$DATA_DIR/universe" 2>/dev/null | cut -f1)
-        echo -e "  └─ Mundo (universe): ${universe_size}"
+        echo -e "  ${GRAY}└─${RESET} World (universe): $universe_size"
     fi
 
     if [ -d "$DATA_DIR/mods" ]; then
         local mods_count=$(ls -1 "$DATA_DIR/mods" 2>/dev/null | wc -l)
         local mods_size=$(du -sh "$DATA_DIR/mods" 2>/dev/null | cut -f1)
-        echo -e "  └─ Mods: ${mods_count} arquivos (${mods_size})"
+        echo -e "  ${GRAY}└─${RESET} Mods: $mods_count files ($mods_size)"
     fi
 
     if [ -d "$DATA_DIR/logs" ]; then
         local logs_size=$(du -sh "$DATA_DIR/logs" 2>/dev/null | cut -f1)
-        echo -e "  └─ Logs: ${logs_size}"
+        echo -e "  ${GRAY}└─${RESET} Logs: $logs_size"
     fi
 
     if [ -d "$DATA_DIR/uptime-kuma" ]; then
         local kuma_size=$(du -sh "$DATA_DIR/uptime-kuma" 2>/dev/null | cut -f1)
-        echo -e "  └─ Uptime Kuma: ${kuma_size}"
+        echo -e "  ${GRAY}└─${RESET} Uptime Kuma: $kuma_size"
     fi
 
-    # Última modificação
+    # Last modification
     if [ -d "$DATA_DIR/universe" ]; then
         local last_modified=$(stat -c %y "$DATA_DIR/universe" | cut -d' ' -f1,2 | cut -d'.' -f1)
-        echo -e "  Última modificação: ${last_modified}"
+        echo -e "  Last modified: ${GRAY}$last_modified${RESET}"
     fi
 
     echo ""
 }
 
-# Pergunta se deve parar o servidor
+# Ask if server should be stopped
 ask_stop_server() {
-    print_warning "Recomendação: Pare o servidor antes do backup para evitar corrupção de dados"
+    print_warning "Recommendation: Stop the server before backup to avoid data corruption"
     echo ""
-    read -p "Deseja parar o servidor antes do backup? (S/n): " stop_server
+    read -p "Stop the server before backup? (Y/n): " stop_server
     echo ""
 
     if [[ ! "$stop_server" =~ ^[Nn]$ ]]; then
-        print_step "Parando servidor Hytale..."
+        print_step "Stopping Hytale server..."
         cd "$PROJECT_DIR"
 
-        # Tenta docker compose (novo) ou docker-compose (antigo)
+        # Try docker compose (new) or docker-compose (old)
         if docker compose stop hytale-server 2>/dev/null || docker-compose stop hytale-server 2>/dev/null; then
-            print_success "Servidor parado"
+            print_success "Server stopped"
             SERVER_WAS_STOPPED=true
         else
-            print_warning "Não foi possível parar o servidor"
-            echo -e "  ${YELLOW}Verifique se o Docker está rodando e se você está no diretório correto${RESET}"
+            print_warning "Could not stop server"
+            echo -e "  ${GRAY}Check if Docker is running and you're in the correct directory${RESET}"
             echo ""
-            read -p "Deseja continuar o backup mesmo assim? (s/N): " continue_anyway
-            if [[ ! "$continue_anyway" =~ ^[Ss]$ ]]; then
-                print_error "Backup cancelado"
+            read -p "Continue backup anyway? (y/N): " continue_anyway
+            if [[ ! "$continue_anyway" =~ ^[YySs]$ ]]; then
+                print_error "Backup cancelled"
                 exit 1
             fi
             SERVER_WAS_STOPPED=false
         fi
         echo ""
     else
-        print_warning "Backup será feito com o servidor rodando (risco de corrupção)"
+        print_warning "Backup will be performed with server running (corruption risk)"
         SERVER_WAS_STOPPED=false
         echo ""
         sleep 2
     fi
 
-    # Limpa tela para próxima etapa
+    # Clear screen for next step
     sleep 1
     clear
     print_header
 }
 
-# Escolhe destino do backup
+# Choose backup destination
 choose_backup_location() {
-    echo -e "${YELLOW}Escolha o destino do backup:${RESET}"
+    echo -e "${WHITE}Choose backup destination:${RESET}"
     echo ""
-    echo "  1) Diretório padrão (backups/)"
-    echo "  2) Especificar outro caminho"
+    echo -e "  ${BLUE}1${RESET}) Default directory (backups/)"
+    echo -e "  ${BLUE}2${RESET}) Specify another path"
     echo ""
-    read -p "Escolha (1-2): " location_choice
+    read -p "Choice (1-2): " location_choice
     echo ""
 
     case "$location_choice" in
@@ -171,66 +176,66 @@ choose_backup_location() {
             CHOSEN_BACKUP_DIR="$BACKUP_DIR"
             ;;
         2)
-            read -p "Digite o caminho completo: " custom_path
+            read -p "Enter full path: " custom_path
             if [ ! -d "$custom_path" ]; then
-                print_warning "Diretório não existe. Criando..."
+                print_warning "Directory doesn't exist. Creating..."
                 mkdir -p "$custom_path"
             fi
             CHOSEN_BACKUP_DIR="$custom_path"
             ;;
         *)
-            print_error "Opção inválida. Usando diretório padrão."
+            print_error "Invalid option. Using default directory."
             mkdir -p "$BACKUP_DIR"
             CHOSEN_BACKUP_DIR="$BACKUP_DIR"
             ;;
     esac
 
-    print_success "Destino: $CHOSEN_BACKUP_DIR"
+    print_success "Destination: $CHOSEN_BACKUP_DIR"
     echo ""
 
-    # Limpa tela para próxima etapa
+    # Clear screen for next step
     sleep 1
     clear
     print_header
 }
 
-# Escolhe o que incluir no backup
+# Choose backup content
 choose_backup_content() {
-    echo -e "${YELLOW}O que deseja incluir no backup?${RESET}"
+    echo -e "${WHITE}What should be included in the backup?${RESET}"
     echo ""
-    echo "  1) Tudo (mundo, mods, logs, configs, uptime-kuma)"
-    echo "  2) Apenas mundo (universe)"
-    echo "  3) Mundo + Mods + Configs"
-    echo "  4) Personalizado"
+    echo -e "  ${BLUE}1${RESET}) Everything (world, mods, logs, configs, uptime-kuma)"
+    echo -e "  ${BLUE}2${RESET}) World only (universe)"
+    echo -e "  ${BLUE}3${RESET}) World + Mods + Configs"
+    echo -e "  ${BLUE}4${RESET}) Custom"
     echo ""
-    read -p "Escolha (1-4): " content_choice
+    read -p "Choice (1-4): " content_choice
     echo ""
 
     case "$content_choice" in
         1)
             BACKUP_CONTENT="data"
             BACKUP_NAME="full"
-            print_info "Backup completo selecionado"
+            print_info "Complete backup selected"
             ;;
         2)
             BACKUP_CONTENT="data/universe"
             BACKUP_NAME="world"
-            print_info "Apenas mundo será incluído"
+            print_info "World only will be included"
             ;;
         3)
             BACKUP_CONTENT="data/universe data/mods data/config.json data/permissions.json data/whitelist.json data/bans.json"
             BACKUP_NAME="essential"
-            print_info "Mundo + Mods + Configs selecionados"
+            print_info "World + Mods + Configs selected"
             ;;
         4)
-            echo "Selecione os itens (separados por espaço):"
-            echo "  u = universe (mundo)"
+            echo "Select items (space separated):"
+            echo "  u = universe (world)"
             echo "  m = mods"
             echo "  l = logs"
             echo "  c = configs"
             echo "  k = uptime-kuma"
             echo ""
-            read -p "Itens: " custom_items
+            read -p "Items: " custom_items
 
             BACKUP_CONTENT=""
             BACKUP_NAME="custom"
@@ -241,176 +246,176 @@ choose_backup_content() {
             [[ "$custom_items" =~ "c" ]] && BACKUP_CONTENT="$BACKUP_CONTENT data/config.json data/permissions.json data/whitelist.json data/bans.json"
             [[ "$custom_items" =~ "k" ]] && BACKUP_CONTENT="$BACKUP_CONTENT data/uptime-kuma"
 
-            print_info "Backup personalizado configurado"
+            print_info "Custom backup configured"
             ;;
         *)
-            print_error "Opção inválida. Usando backup completo."
+            print_error "Invalid option. Using complete backup."
             BACKUP_CONTENT="data"
             BACKUP_NAME="full"
             ;;
     esac
     echo ""
 
-    # Limpa tela para próxima etapa
+    # Clear screen for next step
     sleep 1
     clear
     print_header
 }
 
-# Cria o backup
+# Create backup
 create_backup() {
     local timestamp=$(date +%Y%m%d-%H%M%S)
     BACKUP_FILE_PATH="$CHOSEN_BACKUP_DIR/hytale-backup-${BACKUP_NAME}-${timestamp}.tar.gz"
 
-    print_step "Criando backup..."
-    echo -e "  Arquivo: $(basename "$BACKUP_FILE_PATH")"
+    print_step "Creating backup..."
+    echo -e "  File: $(basename "$BACKUP_FILE_PATH")"
     echo ""
 
     cd "$PROJECT_DIR"
 
-    # Cria o backup com barra de progresso
+    # Create backup with progress bar
     if tar -czf "$BACKUP_FILE_PATH" $BACKUP_CONTENT 2>/dev/null; then
         echo ""
-        print_success "Backup criado com sucesso!"
+        print_success "Backup created successfully!"
 
-        # Mostra informações do backup
+        # Show backup information
         local backup_size=$(du -h "$BACKUP_FILE_PATH" | cut -f1)
         echo ""
-        echo -e "${GREEN}════════════════════════════════════════════════════════${RESET}"
-        echo -e "  Arquivo: ${CYAN}$(basename "$BACKUP_FILE_PATH")${RESET}"
-        echo -e "  Tamanho: ${GREEN}$backup_size${RESET}"
-        echo -e "  Local: ${CYAN}$BACKUP_FILE_PATH${RESET}"
-        echo -e "${GREEN}════════════════════════════════════════════════════════${RESET}"
+        echo -e "${CYAN}════════════════════════════════════════════════════════${RESET}"
+        echo -e "  File: ${WHITE}$(basename "$BACKUP_FILE_PATH")${RESET}"
+        echo -e "  Size: ${CYAN}$backup_size${RESET}"
+        echo -e "  Location: ${GRAY}$BACKUP_FILE_PATH${RESET}"
+        echo -e "${CYAN}════════════════════════════════════════════════════════${RESET}"
         echo ""
         return 0
     else
-        print_error "Falha ao criar backup"
+        print_error "Failed to create backup"
 
-        # Tenta limpar arquivo parcial
+        # Try to clean partial file
         [ -f "$BACKUP_FILE_PATH" ] && rm -f "$BACKUP_FILE_PATH"
 
         return 1
     fi
 }
 
-# Upload para Google Drive
+# Upload to Google Drive
 upload_to_gdrive() {
     local backup_file="$1"
 
-    # Verifica se o Google Drive está configurado
+    # Check if Google Drive is configured
     if [ -z "$GDRIVE_BACKUP_PATH" ]; then
         return 0
     fi
 
-    print_step "Fazendo upload para Google Drive..."
+    print_step "Uploading to Google Drive..."
     echo ""
 
-    # Verifica se rclone está instalado
+    # Check if rclone is installed
     if ! command -v rclone &> /dev/null; then
-        print_warning "rclone não está instalado"
-        echo -e "  ${YELLOW}Para habilitar backup no Google Drive, instale o rclone:${RESET}"
+        print_warning "rclone is not installed"
+        echo -e "  ${GRAY}To enable Google Drive backup, install rclone:${RESET}"
         echo -e "  ${CYAN}curl https://rclone.org/install.sh | sudo bash${RESET}"
         echo ""
         return 1
     fi
 
-    # Extrai o remote do caminho (parte antes do :)
+    # Extract remote from path (part before :)
     local remote=$(echo "$GDRIVE_BACKUP_PATH" | cut -d: -f1)
 
-    # Verifica se o remote está configurado
+    # Check if remote is configured
     if ! rclone listremotes | grep -q "^${remote}:$"; then
-        print_warning "Google Drive não está configurado no rclone"
-        echo -e "  ${YELLOW}Configure o Google Drive:${RESET}"
+        print_warning "Google Drive is not configured in rclone"
+        echo -e "  ${GRAY}Configure Google Drive:${RESET}"
         echo -e "  ${CYAN}rclone config${RESET}"
         echo ""
         return 1
     fi
 
-    # Faz upload do arquivo
+    # Upload file
     if rclone copy "$backup_file" "$GDRIVE_BACKUP_PATH" --progress; then
         echo ""
-        print_success "Backup enviado para Google Drive!"
-        echo -e "  Local: ${CYAN}$GDRIVE_BACKUP_PATH/$(basename "$backup_file")${RESET}"
+        print_success "Backup uploaded to Google Drive!"
+        echo -e "  Location: ${CYAN}$GDRIVE_BACKUP_PATH/$(basename "$backup_file")${RESET}"
         echo ""
         return 0
     else
-        print_error "Falha ao enviar backup para Google Drive"
+        print_error "Failed to upload backup to Google Drive"
         echo ""
         return 1
     fi
 }
 
-# Limpa backups antigos do Google Drive
+# Clean old Google Drive backups
 cleanup_old_gdrive_backups() {
     local keep_count=7
 
-    # Verifica se o Google Drive está configurado
+    # Check if Google Drive is configured
     if [ -z "$GDRIVE_BACKUP_PATH" ]; then
         return 0
     fi
 
-    print_step "Limpando backups antigos do Google Drive (mantendo os $keep_count mais recentes)..."
+    print_step "Cleaning old Google Drive backups (keeping $keep_count most recent)..."
 
-    # Lista backups ordenados por data (mais recentes primeiro)
+    # List backups sorted by date (newest first)
     local backups=$(rclone lsf "$GDRIVE_BACKUP_PATH" --files-only 2>/dev/null | grep "hytale-backup-.*\.tar\.gz$" | sort -r)
     local total_backups=$(echo "$backups" | grep -c "hytale-backup-")
 
     if [ $total_backups -le $keep_count ]; then
-        print_info "Total de backups no Drive: $total_backups (dentro do limite)"
+        print_info "Total Drive backups: $total_backups (within limit)"
         echo ""
         return 0
     fi
 
-    # Calcula quantos backups devem ser deletados
+    # Calculate how many backups should be deleted
     local to_delete=$((total_backups - keep_count))
-    print_info "Total de backups no Drive: $total_backups"
-    print_info "Backups a serem removidos: $to_delete"
+    print_info "Total Drive backups: $total_backups"
+    print_info "Backups to remove: $to_delete"
     echo ""
 
-    # Pula os N mais recentes e deleta os restantes
+    # Skip N most recent and delete the rest
     local count=0
     echo "$backups" | while read -r backup; do
         count=$((count + 1))
         if [ $count -gt $keep_count ]; then
-            print_step "Removendo: $backup"
+            print_step "Removing: $backup"
             if rclone delete "$GDRIVE_BACKUP_PATH/$backup" 2>/dev/null; then
-                print_success "Removido: $backup"
+                print_success "Removed: $backup"
             else
-                print_warning "Falha ao remover: $backup"
+                print_warning "Failed to remove: $backup"
             fi
         fi
     done
 
     echo ""
-    print_success "Limpeza concluída!"
+    print_success "Cleanup completed!"
     echo ""
 }
 
-# Reinicia servidor se foi parado
+# Restart server if it was stopped
 restart_server_if_needed() {
     if [ "$SERVER_WAS_STOPPED" = true ]; then
         echo ""
-        read -p "Deseja reiniciar o servidor agora? (S/n): " restart
+        read -p "Restart the server now? (Y/n): " restart
 
         if [[ ! "$restart" =~ ^[Nn]$ ]]; then
-            print_step "Reiniciando servidor Hytale..."
+            print_step "Restarting Hytale server..."
             cd "$PROJECT_DIR"
             if docker compose start hytale-server 2>/dev/null || docker-compose start hytale-server 2>/dev/null; then
-                print_success "Servidor reiniciado"
+                print_success "Server restarted"
             else
-                print_error "Não foi possível reiniciar o servidor automaticamente"
-                echo -e "  ${YELLOW}Reinicie manualmente: docker compose up -d hytale-server${RESET}"
+                print_error "Could not restart server automatically"
+                echo -e "  ${GRAY}Restart manually: docker compose up -d hytale-server${RESET}"
             fi
         else
-            print_warning "Servidor continua parado. Inicie manualmente quando necessário."
+            print_warning "Server remains stopped. Start manually when needed."
         fi
     fi
 }
 
-# Lista backups existentes
+# List existing backups
 list_existing_backups() {
     echo ""
-    print_step "Backups existentes:"
+    print_step "Existing backups:"
     echo ""
 
     if [ -d "$BACKUP_DIR" ] && [ "$(ls -A $BACKUP_DIR 2>/dev/null)" ]; then
@@ -422,49 +427,49 @@ list_existing_backups() {
             local size=$(du -h "$backup" | cut -f1)
             local date=$(stat -c %y "$backup" | cut -d' ' -f1,2 | cut -d'.' -f1)
             echo -e "  ${count}. ${CYAN}${backup}${RESET}"
-            echo -e "     Tamanho: ${size} | Criado: ${date}"
+            echo -e "     Size: $size | Created: ${GRAY}$date${RESET}"
         done
 
         if [ $count -eq 0 ]; then
-            print_info "Nenhum backup encontrado no diretório padrão"
+            print_info "No backups found in default directory"
         else
             echo ""
             print_info "Total: $count backup(s)"
         fi
     else
-        print_info "Nenhum backup encontrado no diretório padrão"
+        print_info "No backups found in default directory"
     fi
     echo ""
 }
 
-# Resumo final
+# Final summary
 show_summary() {
     local backup_file="$1"
 
     echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${GREEN}║            BACKUP CONCLUÍDO COM SUCESSO                ║${RESET}"
-    echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${RESET}"
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${CYAN}║           BACKUP COMPLETED SUCCESSFULLY                ║${RESET}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${RESET}"
     echo ""
-    echo "Como restaurar este backup:"
+    echo "How to restore this backup:"
     echo ""
-    echo "  1. Pare o servidor:"
+    echo -e "  ${BLUE}1.${RESET} Stop the server:"
     echo -e "     ${CYAN}docker compose down${RESET}"
     echo ""
-    echo "  2. Faça backup dos dados atuais (segurança):"
+    echo -e "  ${BLUE}2.${RESET} Backup current data (safety):"
     echo -e "     ${CYAN}mv data data.old${RESET}"
     echo ""
-    echo "  3. Extraia o backup:"
+    echo -e "  ${BLUE}3.${RESET} Extract backup:"
     echo -e "     ${CYAN}tar -xzf $(basename "$backup_file")${RESET}"
     echo ""
-    echo "  4. Reinicie o servidor:"
+    echo -e "  ${BLUE}4.${RESET} Restart server:"
     echo -e "     ${CYAN}docker compose up -d${RESET}"
     echo ""
 }
 
 # Main
 main() {
-    # Ativa modo de manutenção
+    # Enable maintenance mode
     "$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Backup em andamento" 2>/dev/null || true
 
     clear
@@ -484,16 +489,16 @@ main() {
         list_existing_backups
         show_summary "$BACKUP_FILE_PATH"
     else
-        print_error "Backup falhou!"
+        print_error "Backup failed!"
         restart_server_if_needed
-        # Desativa modo de manutenção mesmo em caso de erro
+        # Disable maintenance mode even on error
         "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
         exit 1
     fi
 
-    # Desativa modo de manutenção
+    # Disable maintenance mode
     "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
 }
 
-# Executa
+# Execute
 main

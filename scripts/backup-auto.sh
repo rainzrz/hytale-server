@@ -1,17 +1,19 @@
 #!/bin/bash
 
-# Script de backup automático (sem interação)
-# Executa backup completo diariamente
+# Automated Backup Script
+# Runs daily backups without user interaction
 
-# Cores
+# Colors - Blue and White theme
 RESET='\033[0m'
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
+BLUE='\033[38;5;39m'
+CYAN='\033[38;5;51m'
+WHITE='\033[1;37m'
+GRAY='\033[38;5;245m'
 
-# Diretórios
+# Reset colors on exit or interrupt and disable maintenance
+trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null > /dev/null; exit 130' INT TERM
+
+# Directories
 PROJECT_DIR="/home/rainz/hytale-server"
 DATA_DIR="$PROJECT_DIR/data"
 BACKUP_DIR="$PROJECT_DIR/backups"
@@ -20,120 +22,120 @@ LOG_FILE="$PROJECT_DIR/logs/backup-auto.log"
 # Google Drive via rclone
 GDRIVE_BACKUP_PATH="gdrive:Backups/Hytale"
 
-# Garante que o diretório de logs existe
+# Ensure log directory exists
 mkdir -p "$PROJECT_DIR/logs"
 
-# Funções de log
+# Log functions
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
 log_error() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $1" | tee -a "$LOG_FILE"
 }
 
 log_success() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] SUCCESS: $1" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [OK] $1" | tee -a "$LOG_FILE"
 }
 
-# Início
+# Start
 log "=========================================="
-log "Iniciando backup automático"
+log "Starting automated backup"
 log "=========================================="
 
-# Ativa modo de manutenção
+# Enable maintenance mode
 "$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Backup automático em andamento" 2>/dev/null || true
 
-# Verifica se o diretório data existe
+# Verify data directory exists
 if [ ! -d "$DATA_DIR" ]; then
-    log_error "Diretório de dados não encontrado: $DATA_DIR"
+    log_error "Data directory not found: $DATA_DIR"
     "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
     exit 1
 fi
 
-# Cria diretório de backup se não existir
+# Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
 
-# Cria o backup
+# Create backup
 timestamp=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/hytale-backup-full-${timestamp}.tar.gz"
 
-log "Criando backup: $(basename "$BACKUP_FILE")"
+log "Creating backup: $(basename "$BACKUP_FILE")"
 cd "$PROJECT_DIR"
 
 if tar -czf "$BACKUP_FILE" data 2>&1 | tee -a "$LOG_FILE"; then
     backup_size=$(du -h "$BACKUP_FILE" | cut -f1)
-    log_success "Backup criado com sucesso! Tamanho: $backup_size"
+    log_success "Backup created successfully! Size: $backup_size"
 else
-    log_error "Falha ao criar backup"
+    log_error "Failed to create backup"
     [ -f "$BACKUP_FILE" ] && rm -f "$BACKUP_FILE"
     "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
     exit 1
 fi
 
-# Upload para Google Drive
+# Upload to Google Drive
 if [ -n "$GDRIVE_BACKUP_PATH" ]; then
     if command -v rclone &> /dev/null; then
         remote=$(echo "$GDRIVE_BACKUP_PATH" | cut -d: -f1)
 
         if rclone listremotes | grep -q "^${remote}:$"; then
-            log "Enviando backup para Google Drive..."
+            log "Uploading backup to Google Drive..."
 
             if rclone copy "$BACKUP_FILE" "$GDRIVE_BACKUP_PATH" 2>&1 | tee -a "$LOG_FILE"; then
-                log_success "Backup enviado para Google Drive"
+                log_success "Backup uploaded to Google Drive"
 
-                # Limpa backups antigos do Drive
-                log "Limpando backups antigos do Google Drive (mantendo os 7 mais recentes)..."
+                # Clean old Drive backups
+                log "Cleaning old Google Drive backups (keeping 7 most recent)..."
 
                 backups=$(rclone lsf "$GDRIVE_BACKUP_PATH" --files-only 2>/dev/null | grep "hytale-backup-.*\.tar\.gz$" | sort -r)
                 total_backups=$(echo "$backups" | grep -c "hytale-backup-" || echo "0")
 
                 if [ "$total_backups" -gt 7 ]; then
                     to_delete=$((total_backups - 7))
-                    log "Total de backups no Drive: $total_backups - Removendo: $to_delete"
+                    log "Total Drive backups: $total_backups - Removing: $to_delete"
 
                     count=0
                     echo "$backups" | while read -r backup; do
                         count=$((count + 1))
                         if [ $count -gt 7 ]; then
-                            log "Removendo: $backup"
+                            log "Removing: $backup"
                             rclone delete "$GDRIVE_BACKUP_PATH/$backup" 2>&1 | tee -a "$LOG_FILE"
                         fi
                     done
 
-                    log_success "Limpeza do Drive concluída"
+                    log_success "Drive cleanup completed"
                 else
-                    log "Total de backups no Drive: $total_backups (dentro do limite)"
+                    log "Total Drive backups: $total_backups (within limit)"
                 fi
             else
-                log_error "Falha ao enviar backup para Google Drive"
+                log_error "Failed to upload backup to Google Drive"
             fi
         else
-            log_error "Google Drive não está configurado no rclone"
+            log_error "Google Drive not configured in rclone"
         fi
     else
-        log_error "rclone não está instalado"
+        log_error "rclone is not installed"
     fi
 fi
 
-# Limpa backups locais antigos (mantém os 7 mais recentes)
-log "Limpando backups locais antigos (mantendo os 7 mais recentes)..."
+# Clean old local backups (keep 7 most recent)
+log "Cleaning old local backups (keeping 7 most recent)..."
 cd "$BACKUP_DIR"
 backup_count=$(ls -t hytale-backup-*.tar.gz 2>/dev/null | wc -l)
 
 if [ "$backup_count" -gt 7 ]; then
     ls -t hytale-backup-*.tar.gz | tail -n +8 | while read -r old_backup; do
-        log "Removendo backup local antigo: $old_backup"
+        log "Removing old local backup: $old_backup"
         rm -f "$old_backup"
     done
-    log_success "Limpeza local concluída"
+    log_success "Local cleanup completed"
 else
-    log "Total de backups locais: $backup_count (dentro do limite)"
+    log "Total local backups: $backup_count (within limit)"
 fi
 
 log "=========================================="
-log "Backup automático concluído com sucesso!"
+log "Automated backup completed successfully!"
 log "=========================================="
 
-# Desativa modo de manutenção
+# Disable maintenance mode
 "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
