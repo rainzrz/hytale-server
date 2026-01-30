@@ -30,11 +30,11 @@ print_header() {
 }
 
 check_auth_status() {
-    # Pega os últimos 150 logs
-    local logs=$(docker logs --tail 150 "$CONTAINER_NAME" 2>&1)
+    # Pega os últimos 2000 logs (aumentado para capturar mensagens antigas de boot)
+    local logs=$(docker logs --tail 2000 "$CONTAINER_NAME" 2>&1)
 
     # Verifica se há erros de autenticação
-    if echo "$logs" | grep -qi "session token not available\|make sure to auth first\|authentication unavailable\|auth required"; then
+    if echo "$logs" | grep -qi "session token not available\|make sure to auth first\|authentication unavailable\|auth required\|no server tokens configured"; then
         return 1  # Autenticação necessária
     else
         return 0  # Autenticação OK
@@ -46,20 +46,43 @@ send_auth_command() {
     echo ""
     echo -e "${WHITE}ATENÇÃO:${RESET} O servidor Hytale requer autenticação via navegador."
     echo ""
-    echo -e "${BLUE}Para autenticar:${RESET}"
-    echo -e "  1. Acesse o console do servidor:"
-    echo -e "     ${CYAN}docker attach hytale-server${RESET}"
+    echo -e "${BLUE}O que deseja fazer?${RESET}"
     echo ""
-    echo -e "  2. Digite o comando:"
-    echo -e "     ${CYAN}/auth login device${RESET}"
+    echo -e "  ${CYAN}[A]${RESET} Iniciar processo de autenticação automática"
+    echo -e "  ${GRAY}[I]${RESET} Ignorar e continuar monitorando"
+    echo -e "  ${GRAY}[Q]${RESET} Sair do monitor"
     echo ""
-    echo -e "  3. Abra o link fornecido no navegador e confirme"
+    echo -ne "${WHITE}Escolha: ${RESET}"
+
+    # Read single character without waiting for Enter
+    read -n 1 -r choice
     echo ""
-    echo -e "  4. Para sair do console sem parar o servidor:"
-    echo -e "     Pressione ${CYAN}Ctrl+P${RESET} seguido de ${CYAN}Ctrl+Q${RESET}"
     echo ""
-    echo -e "${WHITE}Ou use o atalho:${RESET}"
-    echo -e "     ${CYAN}./scripts/auth.sh attach${RESET}"
+
+    case "$choice" in
+        [Aa])
+            # Usa o helper script de autenticação
+            "$PROJECT_DIR/scripts/.auth-helper.sh" "$CONTAINER_NAME"
+
+            # Limpa tela novamente
+            clear
+            echo ""
+            echo -e "${BLUE}[✓]${RESET} Processo de autenticação finalizado."
+            echo -e "${GRAY}Voltando ao monitoramento...${RESET}"
+            echo ""
+            sleep 2
+            ;;
+        [Ii])
+            echo -e "${GRAY}[~]${RESET} Continuando monitoramento..."
+            ;;
+        [Qq])
+            echo -e "${GRAY}[X]${RESET} Saindo do monitor..."
+            exit 0
+            ;;
+        *)
+            echo -e "${GRAY}[~]${RESET} Opção inválida, continuando monitoramento..."
+            ;;
+    esac
     echo ""
     echo -e "${GRAY}════════════════════════════════════════════════════════${RESET}"
     echo ""
@@ -134,22 +157,8 @@ show_help() {
 }
 
 attach_console() {
-    print_header
-    echo -e "${BLUE}[>]${RESET} Abrindo console do servidor Hytale..."
-    echo ""
-    echo -e "${YELLOW}[!]${RESET} ${WHITE}Para sair sem parar o servidor:${RESET}"
-    echo -e "    Pressione ${CYAN}Ctrl+P${RESET} seguido de ${CYAN}Ctrl+Q${RESET}"
-    echo ""
-    echo -e "${YELLOW}[!]${RESET} ${WHITE}Para autenticar:${RESET}"
-    echo -e "    1. Digite: ${CYAN}/auth login device${RESET}"
-    echo -e "    2. Abra o link no navegador e confirme"
-    echo -e "    3. Aguarde a confirmação no console"
-    echo ""
-    echo -e "${GRAY}════════════════════════════════════════════════════════${RESET}"
-    echo ""
-    read -p "Pressione Enter para continuar..."
-
-    docker attach "$CONTAINER_NAME"
+    # Usa o helper script de autenticação
+    "$PROJECT_DIR/scripts/.auth-helper.sh" "$CONTAINER_NAME"
 }
 
 # Main
