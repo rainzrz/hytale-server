@@ -43,7 +43,15 @@
       "Bash(rclone ls:*)",
       "Bash(rclone lsf:*)",
       "Bash(./scripts/maintenance-mode.sh:*)",
-      "Bash(sudo rm:*)"
+      "Bash(sudo rm:*)",
+      "Bash(timedatectl:*)",
+      "Bash(docker exec:*)",
+      "Bash(sudo docker exec:*)",
+      "Bash(sudo docker build:*)",
+      "Bash(sudo docker run:*)",
+      "Bash(docker cp:*)",
+      "Bash(git mv:*)",
+      "Bash(./scripts/auth.sh check:*)"
     ]
   }
 }

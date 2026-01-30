@@ -197,9 +197,9 @@ def obter_versao_servidor():
 def verificar_autenticacao():
     """Verifica se o servidor precisa de autenticação"""
     try:
-        # Verifica os últimos logs do servidor (aumentado para capturar boot messages)
+        # Verifica os últimos logs do servidor (aumentado para capturar mensagens antigas de boot)
         result = subprocess.run(
-            ["docker", "logs", "--tail", "500", "hytale-server"],
+            ["docker", "logs", "--tail", "2000", "hytale-server"],
             capture_output=True,
             text=True,
             timeout=5
