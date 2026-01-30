@@ -15,6 +15,10 @@ RUN echo "=== VERIFICANDO BOT.PY ===" && \
     ls -la /app/bot.py && \
     wc -l /app/bot.py && \
     grep -c "verificar_autenticacao" /app/bot.py && \
+    echo "Verificando padrão 'no server tokens configured':" && \
+    grep -c "no server tokens configured" /app/bot.py && \
+    echo "Verificando tail 500:" && \
+    grep -c "tail.*500" /app/bot.py && \
     echo "=== FIM VERIFICAÇÃO ==="
 
 # Instala dependências Python

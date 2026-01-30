@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Hytale Authentication Monitor
-# Monitors server logs and alerts when authentication is needed
+# Monitor de Autenticação do Hytale
+# Monitora logs do servidor e alerta quando autenticação é necessária
 
-# Colors - Blue and White theme
+# Cores - Tema Azul e Branco
 RESET='\033[0m'
 BLUE='\033[38;5;39m'
 CYAN='\033[38;5;51m'
@@ -12,19 +12,19 @@ GRAY='\033[38;5;245m'
 RED='\033[38;5;196m'
 YELLOW='\033[38;5;226m'
 
-# Reset colors on exit or interrupt
+# Reseta cores ao sair ou interromper
 trap 'echo -e "\033[0m"; exit 130' INT TERM
 
-# Configuration
+# Configuração
 PROJECT_DIR="/home/rainz/hytale-server"
 CONTAINER_NAME="hytale-server"
-CHECK_INTERVAL=30  # seconds
+CHECK_INTERVAL=30  # segundos
 NOTIFICATION_FILE="/tmp/hytale_auth_alert.flag"
 
 print_header() {
     clear
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${CYAN}║           AUTHENTICATION MONITOR                       ║${RESET}"
+    echo -e "${CYAN}║           MONITOR DE AUTENTICAÇÃO                      ║${RESET}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${RESET}"
     echo ""
 }
@@ -35,9 +35,9 @@ check_auth_status() {
 
     # Verifica se há erros de autenticação
     if echo "$logs" | grep -qi "session token not available\|make sure to auth first\|authentication unavailable\|auth required"; then
-        return 1  # Auth needed
+        return 1  # Autenticação necessária
     else
-        return 0  # Auth OK
+        return 0  # Autenticação OK
     fi
 }
 

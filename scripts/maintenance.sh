@@ -26,7 +26,7 @@ clear_screen() {
 
 print_header() {
     echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${CYAN}║           CONTAINER MANAGEMENT PANEL                   ║${RESET}"
+    echo -e "${CYAN}║      PAINEL DE GERENCIAMENTO DE CONTÊINERES            ║${RESET}"
     echo -e "${CYAN}║           NOR HYTALE INFRASTRUCTURE                    ║${RESET}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${RESET}"
     echo ""
@@ -74,67 +74,67 @@ show_container_menu() {
     echo -e "${WHITE}╰─────────────────────────────────────────────────────╯${RESET}"
     echo ""
 
-    echo -e "${WHITE}Select an action:${RESET}"
+    echo -e "${WHITE}Selecione uma ação:${RESET}"
     echo ""
-    echo -e "  ${BLUE}1${RESET}) [+] Start container"
-    echo -e "  ${BLUE}2${RESET}) [-] Stop container"
-    echo -e "  ${BLUE}3${RESET}) [~] Restart container"
-    echo -e "  ${BLUE}4${RESET}) [>] View logs"
-    echo -e "  ${BLUE}5${RESET}) [>] View logs (live)"
-    echo -e "  ${BLUE}6${RESET}) [>] View statistics"
-    echo -e "  ${BLUE}7${RESET}) [~] Rebuild container"
-    echo -e "  ${BLUE}8${RESET}) [>] Access shell"
-    echo -e "  ${BLUE}9${RESET}) [>] View information"
-    echo -e "  ${BLUE}0${RESET}) [<] Back"
+    echo -e "  ${BLUE}1${RESET}) [+] Iniciar contêiner"
+    echo -e "  ${BLUE}2${RESET}) [-] Parar contêiner"
+    echo -e "  ${BLUE}3${RESET}) [~] Reiniciar contêiner"
+    echo -e "  ${BLUE}4${RESET}) [>] Ver logs"
+    echo -e "  ${BLUE}5${RESET}) [>] Ver logs (ao vivo)"
+    echo -e "  ${BLUE}6${RESET}) [>] Ver estatísticas"
+    echo -e "  ${BLUE}7${RESET}) [~] Rebuildar contêiner"
+    echo -e "  ${BLUE}8${RESET}) [>] Acessar shell"
+    echo -e "  ${BLUE}9${RESET}) [>] Ver informações"
+    echo -e "  ${BLUE}0${RESET}) [<] Voltar"
     echo ""
-    echo -ne "${GRAY}Choice: ${RESET}"
+    echo -ne "${GRAY}Escolha: ${RESET}"
 
     read action
     echo ""
 
     case "$action" in
         1)
-            echo -e "${BLUE}[>]${RESET} Starting ${container}..."
+            echo -e "${BLUE}[>]${RESET} Iniciando ${container}..."
             docker start $container
-            echo -e "${BLUE}[OK]${RESET} Container started"
+            echo -e "${BLUE}[OK]${RESET} Contêiner iniciado"
             ;;
         2)
-            echo -e "${BLUE}[>]${RESET} Stopping ${container}..."
+            echo -e "${BLUE}[>]${RESET} Parando ${container}..."
             docker stop $container
-            echo -e "${BLUE}[OK]${RESET} Container stopped"
+            echo -e "${BLUE}[OK]${RESET} Contêiner parado"
             ;;
         3)
-            echo -e "${BLUE}[>]${RESET} Restarting ${container}..."
+            echo -e "${BLUE}[>]${RESET} Reiniciando ${container}..."
             docker restart $container
-            echo -e "${BLUE}[OK]${RESET} Container restarted"
+            echo -e "${BLUE}[OK]${RESET} Contêiner reiniciado"
             ;;
         4)
-            echo -e "${BLUE}[>]${RESET} Last 50 log lines:"
+            echo -e "${BLUE}[>]${RESET} Últimas 50 linhas de log:"
             echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
             docker logs --tail 50 $container
             ;;
         5)
-            echo -e "${BLUE}[>]${RESET} Live logs (Ctrl+C to exit):"
+            echo -e "${BLUE}[>]${RESET} Logs ao vivo (Ctrl+C para sair):"
             echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
             docker logs -f --tail 20 $container
             ;;
         6)
-            echo -e "${BLUE}[>]${RESET} Live statistics (Ctrl+C to exit):"
+            echo -e "${BLUE}[>]${RESET} Estatísticas ao vivo (Ctrl+C para sair):"
             echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
             docker stats $container
             ;;
         7)
-            echo -e "${BLUE}[>]${RESET} Rebuilding ${container}..."
+            echo -e "${BLUE}[>]${RESET} Rebuildando ${container}..."
             cd /home/rainz/hytale-server
             docker-compose up -d --build --force-recreate $container
-            echo -e "${BLUE}[OK]${RESET} Container rebuilt"
+            echo -e "${BLUE}[OK]${RESET} Contêiner rebuilded"
             ;;
         8)
-            echo -e "${BLUE}[>]${RESET} Accessing shell (type 'exit' to quit)..."
+            echo -e "${BLUE}[>]${RESET} Acessando shell (digite 'exit' para sair)..."
             docker exec -it $container /bin/bash 2>/dev/null || docker exec -it $container /bin/sh
             ;;
         9)
-            echo -e "${BLUE}[>]${RESET} Container information:"
+            echo -e "${BLUE}[>]${RESET} Informações do contêiner:"
             echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
             docker inspect $container | head -50
             ;;
@@ -142,12 +142,12 @@ show_container_menu() {
             return
             ;;
         *)
-            echo -e "${GRAY}[!] Invalid option${RESET}"
+            echo -e "${GRAY}[!] Opção inválida${RESET}"
             ;;
     esac
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -p "Pressione Enter para continuar..."
 }
 
 main_menu() {
@@ -155,7 +155,7 @@ main_menu() {
         clear_screen
         print_header
 
-        echo -e "${WHITE}Select a container:${RESET}"
+        echo -e "${WHITE}Selecione um contêiner:${RESET}"
         echo ""
 
         # Hytale Server
@@ -171,12 +171,12 @@ main_menu() {
         echo -e "  ${BLUE}3${RESET}) [BOT] discord-bot ${status3}"
 
         echo ""
-        echo -e "  ${BLUE}4${RESET}) [~] Restart all containers"
-        echo -e "  ${BLUE}5${RESET}) [>] View all status"
-        echo -e "  ${BLUE}6${RESET}) [>] View all logs"
-        echo -e "  ${BLUE}0${RESET}) [X] Exit"
+        echo -e "  ${BLUE}4${RESET}) [~] Reiniciar todos os contêineres"
+        echo -e "  ${BLUE}5${RESET}) [>] Ver status de todos"
+        echo -e "  ${BLUE}6${RESET}) [>] Ver todos os logs"
+        echo -e "  ${BLUE}0${RESET}) [X] Sair"
         echo ""
-        echo -ne "${GRAY}Choice: ${RESET}"
+        echo -ne "${GRAY}Escolha: ${RESET}"
 
         read choice
 
@@ -192,24 +192,24 @@ main_menu() {
                 ;;
             4)
                 echo ""
-                echo -e "${BLUE}[>]${RESET} Restarting all containers..."
+                echo -e "${BLUE}[>]${RESET} Reiniciando todos os contêineres..."
                 cd /home/rainz/hytale-server
                 docker-compose restart
-                echo -e "${BLUE}[OK]${RESET} All containers restarted"
+                echo -e "${BLUE}[OK]${RESET} Todos os contêineres reiniciados"
                 echo ""
-                read -p "Press Enter to continue..."
+                read -p "Pressione Enter para continuar..."
                 ;;
             5)
                 echo ""
-                echo -e "${BLUE}[>]${RESET} Container status:"
+                echo -e "${BLUE}[>]${RESET} Status dos contêineres:"
                 echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
                 docker-compose ps
                 echo ""
-                read -p "Press Enter to continue..."
+                read -p "Pressione Enter para continuar..."
                 ;;
             6)
                 echo ""
-                echo -e "${BLUE}[>]${RESET} Container logs (Ctrl+C to exit):"
+                echo -e "${BLUE}[>]${RESET} Logs dos contêineres (Ctrl+C para sair):"
                 echo -e "${GRAY}────────────────────────────────────────────────────${RESET}"
                 cd /home/rainz/hytale-server
                 docker-compose logs -f --tail 20
@@ -220,7 +220,7 @@ main_menu() {
                 ;;
             *)
                 echo ""
-                echo -e "${GRAY}[!] Invalid option${RESET}"
+                echo -e "${GRAY}[!] Opção inválida${RESET}"
                 sleep 1
                 ;;
         esac
@@ -230,7 +230,7 @@ main_menu() {
 # Check if Docker is running
 if ! docker ps > /dev/null 2>&1; then
     clear_screen
-    echo -e "${GRAY}[ERROR] Docker is not running or you don't have permission${RESET}"
+    echo -e "${GRAY}[ERROR] Docker não está rodando ou você não tem permissão${RESET}"
     echo ""
     exit 1
 fi

@@ -197,9 +197,9 @@ def obter_versao_servidor():
 def verificar_autenticacao():
     """Verifica se o servidor precisa de autenticação"""
     try:
-        # Verifica os últimos logs do servidor
+        # Verifica os últimos logs do servidor (aumentado para capturar boot messages)
         result = subprocess.run(
-            ["docker", "logs", "--tail", "150", "hytale-server"],
+            ["docker", "logs", "--tail", "500", "hytale-server"],
             capture_output=True,
             text=True,
             timeout=5
@@ -213,16 +213,15 @@ def verificar_autenticacao():
             "session token not available",
             "make sure to auth first",
             "authentication unavailable",
-            "auth required"
+            "auth required",
+            "no server tokens configured"
         ]
 
         # Verifica padrões críticos
         for padrao in padroes_criticos:
             if padrao in logs_lower:
-                # Verifica se é recente (aparece nas últimas 30 linhas)
-                linhas_recentes = '\n'.join(logs.split('\n')[-30:])
-                if padrao in linhas_recentes.lower():
-                    return "⚠️ Necessária", "Use: /auth login device"
+                # Padrões de auth são sempre relevantes, não precisa ser recente
+                return "⚠️ Necessária", "Use: /auth login device"
 
         # Verifica se há muitos erros de handshake (indica problema de auth)
         contador_handshake = logs_lower.count("handshakehandler")
