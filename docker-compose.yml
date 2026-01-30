@@ -74,6 +74,7 @@ services:
       - ./.server:/server:ro
       - /tmp:/tmp:ro
     environment:
+      - TZ=America/Sao_Paulo
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
       - KUMA_API_KEY=${KUMA_API_KEY}

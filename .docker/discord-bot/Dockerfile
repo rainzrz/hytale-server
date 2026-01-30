@@ -10,6 +10,13 @@ RUN apt-get update \
 # Copia arquivos do bot
 COPY .docker/discord-bot/bot.py .docker/discord-bot/requirements.txt /app/
 
+# DEBUG: Verify file was copied correctly
+RUN echo "=== VERIFICANDO BOT.PY ===" && \
+    ls -la /app/bot.py && \
+    wc -l /app/bot.py && \
+    grep -c "verificar_autenticacao" /app/bot.py && \
+    echo "=== FIM VERIFICAÇÃO ==="
+
 # Instala dependências Python
 RUN pip install --no-cache-dir -r requirements.txt
 

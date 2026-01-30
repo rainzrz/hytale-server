@@ -4,6 +4,7 @@ import asyncio
 import discord
 from discord.ext import tasks
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import socket
 import subprocess
 
@@ -154,7 +155,10 @@ def obter_ultimo_backup():
         # Pega o backup mais recente
         ultimo_backup = max(backups, key=os.path.getmtime)
         timestamp = os.path.getmtime(ultimo_backup)
-        data_backup = datetime.fromtimestamp(timestamp)
+
+        # Usa timezone de São Paulo
+        tz = ZoneInfo("America/Sao_Paulo")
+        data_backup = datetime.fromtimestamp(timestamp, tz=tz)
 
         return data_backup.strftime("%d/%m/%Y às %H:%M")
 
@@ -181,13 +185,130 @@ def obter_versao_servidor():
         for line in manifest_content.split('\n'):
             if line.startswith("Implementation-Version:"):
                 version = line.split(":", 1)[1].strip()
-                return f"Version: {version}"
+                return version
 
         return "N/A"
 
     except Exception as e:
         print("[DEBUG] Erro ao obter versão do servidor:", e)
         return "N/A"
+
+
+def verificar_autenticacao():
+    """Verifica se o servidor precisa de autenticação"""
+    try:
+        # Verifica os últimos logs do servidor
+        result = subprocess.run(
+            ["docker", "logs", "--tail", "150", "hytale-server"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        logs = result.stdout + result.stderr
+        logs_lower = logs.lower()
+
+        # Padrões críticos que indicam necessidade de autenticação
+        padroes_criticos = [
+            "session token not available",
+            "make sure to auth first",
+            "authentication unavailable",
+            "auth required"
+        ]
+
+        # Verifica padrões críticos
+        for padrao in padroes_criticos:
+            if padrao in logs_lower:
+                # Verifica se é recente (aparece nas últimas 30 linhas)
+                linhas_recentes = '\n'.join(logs.split('\n')[-30:])
+                if padrao in linhas_recentes.lower():
+                    return "⚠️ Necessária", "Use: /auth login device"
+
+        # Verifica se há muitos erros de handshake (indica problema de auth)
+        contador_handshake = logs_lower.count("handshakehandler")
+        if contador_handshake >= 5:
+            # Verifica se não há mensagens de autenticação bem-sucedida
+            if "authenticated" not in logs_lower and "login successful" not in logs_lower:
+                return "⚠️ Atenção", "Possível problema de auth"
+
+        # Verifica se há flag de alerta do monitor
+        if os.path.exists("/tmp/hytale_auth_alert.flag"):
+            try:
+                with open("/tmp/hytale_auth_alert.flag", 'r') as f:
+                    timestamp = f.read().strip()
+                return "⚠️ Necessária", "Detectado pelo monitor"
+            except:
+                pass
+
+        return "✅ OK", ""
+
+    except subprocess.TimeoutExpired:
+        print("[DEBUG] Timeout ao verificar autenticação")
+        return "⚠️ Timeout", ""
+    except Exception as e:
+        print("[DEBUG] Erro ao verificar autenticação:", e)
+        return "❓ Erro", ""
+
+
+def obter_players_online():
+    """Obtém a lista de players atualmente online no servidor"""
+    try:
+        # Pega mais logs para ter histórico completo da sessão
+        result = subprocess.run(
+            ["docker", "logs", "--tail", "300", "hytale-server"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        logs = result.stdout + result.stderr
+        lines = logs.split('\n')
+
+        # Conjuntos para rastrear players
+        players_online = set()
+
+        # Parseia os logs linha por linha
+        for line in lines:
+            # Padrão: [Universe|P] Adding player 'nome (uuid)' ou Player 'nome' joined world
+            if "[Universe|P] Adding player" in line or ("Adding player" in line and "'" in line):
+                try:
+                    # Extrai o nome entre aspas simples
+                    start = line.find("'") + 1
+                    end = line.find("'", start)
+                    if start > 0 and end > start:
+                        player_name = line[start:end]
+                        players_online.add(player_name)
+                        print(f"[DEBUG] Player adicionado: {player_name}")
+                except Exception as e:
+                    print(f"[DEBUG] Erro ao parsear linha de Adding: {line[:100]}", e)
+
+            # Padrão: [Universe|P] Removing player 'nome' (uuid) ou Removing player 'nome'
+            elif "[Universe|P] Removing player" in line or "Removing player" in line:
+                try:
+                    # Extrai o nome entre aspas simples
+                    start = line.find("'") + 1
+                    end = line.find("'", start)
+                    if start > 0 and end > start:
+                        player_name = line[start:end]
+                        players_online.discard(player_name)
+                        print(f"[DEBUG] Player removido: {player_name}")
+                except Exception as e:
+                    print(f"[DEBUG] Erro ao parsear linha de Removing: {line[:100]}", e)
+
+        # Retorna contagem, lista de nomes, e max players
+        players_list = sorted(list(players_online))
+        count = len(players_list)
+
+        print(f"[DEBUG] Players online: {count} - {players_list}")
+
+        return count, players_list, 100  # max_players = 100
+
+    except subprocess.TimeoutExpired:
+        print("[DEBUG] Timeout ao obter players online")
+        return 0, [], 100
+    except Exception as e:
+        print("[DEBUG] Erro ao obter players online:", e)
+        return 0, [], 100
 
 
 def esta_em_manutencao():
@@ -211,12 +332,24 @@ def criar_embed(status, tudo_ok):
     # Verifica se está em manutenção
     em_manutencao, motivo_manutencao = esta_em_manutencao()
 
+    # Prepara status de autenticação
+    if em_manutencao:
+        auth_status = "🔵"
+    else:
+        status_auth, detalhes_auth = status['autenticacao']
+        if "✅" in status_auth:
+            auth_status = "🟢"
+        elif "⚠️" in status_auth:
+            auth_status = "🔴"
+        else:
+            auth_status = "⚠️"
+
     if em_manutencao:
         embed = discord.Embed(
             title="NOR Infrastructure",
             description=f"🔧 **MANUTENÇÃO EM ANDAMENTO**\n\n{motivo_manutencao}",
             color=discord.Color.from_rgb(59, 130, 246),  # Azul
-            timestamp=datetime.now()
+            timestamp=datetime.now(ZoneInfo("America/Sao_Paulo"))
         )
         # Em manutenção, todos os indicadores ficam azuis
         embed.add_field(
@@ -225,7 +358,8 @@ def criar_embed(status, tudo_ok):
                 f"🔵 Cloudflare DNS\n"
                 f"🔵 Docker Host\n"
                 f"🔵 Network\n"
-                f"🔵 Hytale Server"
+                f"🔵 Hytale Server\n"
+                f"🔵 Autenticação"
             ),
             inline=False
         )
@@ -234,7 +368,7 @@ def criar_embed(status, tudo_ok):
             title="NOR Infrastructure",
             description="Todos os serviços estão operando normalmente.",
             color=discord.Color.from_rgb(34, 197, 94),
-            timestamp=datetime.now()
+            timestamp=datetime.now(ZoneInfo("America/Sao_Paulo"))
         )
         embed.add_field(
             name="Serviços Monitorados",
@@ -242,7 +376,8 @@ def criar_embed(status, tudo_ok):
                 f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
                 f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
                 f"{'🟢' if status['network'] else '🔴'} Network\n"
-                f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
+                f"{'🟢' if status['hytale'] else '🔴'} Hytale Server\n"
+                f"{auth_status} Autenticação"
             ),
             inline=False
         )
@@ -251,7 +386,7 @@ def criar_embed(status, tudo_ok):
             title="NOR Infrastructure",
             description="Um ou mais serviços estão indisponíveis.",
             color=discord.Color.from_rgb(239, 68, 68),
-            timestamp=datetime.now()
+            timestamp=datetime.now(ZoneInfo("America/Sao_Paulo"))
         )
         embed.add_field(
             name="Serviços Monitorados",
@@ -259,7 +394,8 @@ def criar_embed(status, tudo_ok):
                 f"{'🟢' if status['cloudflare'] else '🔴'} Cloudflare DNS\n"
                 f"{'🟢' if status['docker'] else '🔴'} Docker Host\n"
                 f"{'🟢' if status['network'] else '🔴'} Network\n"
-                f"{'🟢' if status['hytale'] else '🔴'} Hytale Server"
+                f"{'🟢' if status['hytale'] else '🔴'} Hytale Server\n"
+                f"{auth_status} Autenticação"
             ),
             inline=False
         )
@@ -302,6 +438,29 @@ def criar_embed(status, tudo_ok):
         inline=True
     )
 
+    # Players Online
+    if not em_manutencao and status['hytale']:
+        count, players_list, max_players = status['players']
+        if count > 0:
+            players_str = ", ".join(players_list)
+            embed.add_field(
+                name="Players Online",
+                value=f"**{count}/{max_players}** jogadores\n{players_str}",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Players Online",
+                value=f"**0/{max_players}** jogadores\nNenhum jogador online",
+                inline=False
+            )
+    elif em_manutencao:
+        embed.add_field(
+            name="Players Online",
+            value="🔵 Em manutenção",
+            inline=False
+        )
+
     #embed.set_image(url="https://hytale.com/static/images/logo.png")
     embed.set_image(url="https://i.ibb.co/NdsxQwB7/NOR-Hytale-Logo.png")
     embed.set_footer(text="Monitoramento automático | NOR")
@@ -328,11 +487,13 @@ async def checar_status():
         "network": await checar_network(),
         "hytale": await checar_hytale_server(),
         "ultimo_backup": obter_ultimo_backup(),
-        "versao": obter_versao_servidor()
+        "versao": obter_versao_servidor(),
+        "autenticacao": verificar_autenticacao(),
+        "players": obter_players_online()
     }
 
-    # Verifica estado geral apenas dos serviços (exclui backup e versão)
-    servicos = {k: v for k, v in status_atual.items() if k not in ["ultimo_backup", "versao"]}
+    # Verifica estado geral apenas dos serviços (exclui backup, versão, autenticação e players)
+    servicos = {k: v for k, v in status_atual.items() if k not in ["ultimo_backup", "versao", "autenticacao", "players"]}
     estado_geral = all(servicos.values())
     print("[DEBUG] Status atual:", status_atual)
 
