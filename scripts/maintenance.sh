@@ -11,7 +11,7 @@ WHITE='\033[1;37m'
 GRAY='\033[38;5;245m'
 
 # Reset colors on exit or interrupt
-trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null; exit 130' INT TERM EXIT
+trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/.maintenance-mode.sh disable 2>/dev/null; exit 130' INT TERM EXIT
 
 # Status indicators
 ONLINE="${BLUE}[ONLINE]${RESET}"
@@ -236,10 +236,10 @@ if ! docker ps > /dev/null 2>&1; then
 fi
 
 # Enable maintenance mode
-/home/rainz/hytale-server/scripts/maintenance-mode.sh enable "Manutenção manual em andamento" 2>/dev/null || true
+/home/rainz/hytale-server/scripts/.maintenance-mode.sh enable "Manutenção manual em andamento" 2>/dev/null || true
 
 # Disable maintenance mode on exit (trap)
-trap '/home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null || true' EXIT INT TERM
+trap '/home/rainz/hytale-server/scripts/.maintenance-mode.sh disable 2>/dev/null || true' EXIT INT TERM
 
 # Start main menu
 main_menu

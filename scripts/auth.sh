@@ -59,7 +59,7 @@ send_auth_command() {
     echo -e "     Pressione ${CYAN}Ctrl+P${RESET} seguido de ${CYAN}Ctrl+Q${RESET}"
     echo ""
     echo -e "${WHITE}Ou use o atalho:${RESET}"
-    echo -e "     ${CYAN}./scripts/auth-monitor.sh attach${RESET}"
+    echo -e "     ${CYAN}./scripts/auth.sh attach${RESET}"
     echo ""
     echo -e "${GRAY}════════════════════════════════════════════════════════${RESET}"
     echo ""

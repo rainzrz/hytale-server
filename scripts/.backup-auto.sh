@@ -11,7 +11,7 @@ WHITE='\033[1;37m'
 GRAY='\033[38;5;245m'
 
 # Reset colors on exit or interrupt and disable maintenance
-trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null > /dev/null; exit 130' INT TERM
+trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/.maintenance-mode.sh disable 2>/dev/null > /dev/null; exit 130' INT TERM
 
 # Directories
 PROJECT_DIR="/home/rainz/hytale-server"
@@ -44,12 +44,12 @@ log "Starting automated backup"
 log "=========================================="
 
 # Enable maintenance mode
-"$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Backup automático em andamento" 2>/dev/null || true
+"$PROJECT_DIR/scripts/.maintenance-mode.sh" enable "Backup automático em andamento" 2>/dev/null || true
 
 # Verify data directory exists
 if [ ! -d "$DATA_DIR" ]; then
     log_error "Data directory not found: $DATA_DIR"
-    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
+    "$PROJECT_DIR/scripts/.maintenance-mode.sh" disable 2>/dev/null || true
     exit 1
 fi
 
@@ -69,7 +69,7 @@ if tar -czf "$BACKUP_FILE" data 2>&1 | tee -a "$LOG_FILE"; then
 else
     log_error "Failed to create backup"
     [ -f "$BACKUP_FILE" ] && rm -f "$BACKUP_FILE"
-    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
+    "$PROJECT_DIR/scripts/.maintenance-mode.sh" disable 2>/dev/null || true
     exit 1
 fi
 
@@ -138,4 +138,4 @@ log "Automated backup completed successfully!"
 log "=========================================="
 
 # Disable maintenance mode
-"$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
+"$PROJECT_DIR/scripts/.maintenance-mode.sh" disable 2>/dev/null || true

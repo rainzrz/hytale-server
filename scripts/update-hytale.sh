@@ -11,7 +11,7 @@ WHITE='\033[1;37m'
 GRAY='\033[38;5;245m'
 
 # Reset colors on exit or interrupt and disable maintenance
-trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/maintenance-mode.sh disable 2>/dev/null > /dev/null; exit 130' INT TERM
+trap 'echo -e "\033[0m"; /home/rainz/hytale-server/scripts/.maintenance-mode.sh disable 2>/dev/null > /dev/null; exit 130' INT TERM
 
 # Directories
 PROJECT_DIR="/home/rainz/hytale-server"
@@ -356,7 +356,7 @@ show_summary() {
 # Main
 main() {
     # Enable maintenance mode
-    "$PROJECT_DIR/scripts/maintenance-mode.sh" enable "Atualização do servidor em andamento" 2>/dev/null || true
+    "$PROJECT_DIR/scripts/.maintenance-mode.sh" enable "Atualização do servidor em andamento" 2>/dev/null || true
 
     clear
     print_header
@@ -375,7 +375,7 @@ main() {
     show_summary
 
     # Disable maintenance mode
-    "$PROJECT_DIR/scripts/maintenance-mode.sh" disable 2>/dev/null || true
+    "$PROJECT_DIR/scripts/.maintenance-mode.sh" disable 2>/dev/null || true
 }
 
 # Execute
