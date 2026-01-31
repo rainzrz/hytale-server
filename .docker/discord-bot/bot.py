@@ -7,6 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import socket
 import subprocess
+import json
 
 # =======================
 # CONFIG
@@ -17,6 +18,7 @@ CHANNEL_ID_STR = os.getenv("DISCORD_CHANNEL_ID")
 
 STATUS_FILE = "status_message_id.txt"
 MAINTENANCE_FILE = "/tmp/hytale_maintenance.flag"
+PLAYERS_STATE_FILE = "/app/players_online.json"
 
 if not TOKEN:
     print("ERRO: DISCORD_TOKEN não configurado")
@@ -217,27 +219,61 @@ def verificar_autenticacao():
             "no server tokens configured"
         ]
 
-        # Verifica padrões críticos
-        for padrao in padroes_criticos:
-            if padrao in logs_lower:
-                # Padrões de auth são sempre relevantes, não precisa ser recente
-                return "⚠️ Necessária", "Use: /auth login device"
+        # Padrões que indicam autenticação bem-sucedida
+        padroes_sucesso = [
+            "selected profile:",
+            "authentication successful",
+            "authenticated as",
+            "logged in as",
+            "found 2 game profile(s)",
+            "found 1 game profile(s)",
+            "multiple profiles available"
+        ]
+
+        # Verifica se há mensagens de sucesso (autenticação foi feita)
+        tem_sucesso = any(padrao_sucesso in logs_lower for padrao_sucesso in padroes_sucesso)
+
+        # Verifica padrões críticos de erro
+        tem_erro_auth = False
+
+        if tem_sucesso:
+            # Se há evidências de autenticação bem-sucedida, verifica se está aguardando seleção de perfil
+            if "multiple profiles available" in logs_lower and "selected profile:" not in logs_lower:
+                print("[DEBUG] Autenticação OK mas aguardando seleção de perfil")
+                tem_erro_auth = False  # Não é erro de autenticação, apenas precisa selecionar perfil
+            else:
+                print("[DEBUG] Autenticação bem-sucedida detectada - ignorando erros antigos")
+                tem_erro_auth = False
+        else:
+            # Só verifica erros se não há evidências de sucesso
+            for padrao in padroes_criticos:
+                if padrao in logs_lower:
+                    print(f"[DEBUG] Padrão de erro '{padrao}' encontrado sem evidência de sucesso")
+                    tem_erro_auth = True
+                    break
 
         # Verifica se há muitos erros de handshake (indica problema de auth)
+        tem_erro_handshake = False
         contador_handshake = logs_lower.count("handshakehandler")
         if contador_handshake >= 5:
             # Verifica se não há mensagens de autenticação bem-sucedida
             if "authenticated" not in logs_lower and "login successful" not in logs_lower:
-                return "⚠️ Atenção", "Possível problema de auth"
+                tem_erro_handshake = True
 
-        # Verifica se há flag de alerta do monitor
-        if os.path.exists("/tmp/hytale_auth_alert.flag"):
-            try:
-                with open("/tmp/hytale_auth_alert.flag", 'r') as f:
-                    timestamp = f.read().strip()
-                return "⚠️ Necessária", "Detectado pelo monitor"
-            except:
-                pass
+        # Se encontrou erros reais nos logs, retorna erro
+        if tem_erro_auth:
+            return "⚠️ Necessária", "Use: /auth login device"
+
+        if tem_erro_handshake:
+            return "⚠️ Atenção", "Possível problema de auth"
+
+        # Se não há erros nos logs, limpa flag antiga se existir
+        try:
+            if os.path.exists("/tmp/hytale_auth_alert.flag"):
+                os.remove("/tmp/hytale_auth_alert.flag")
+                print("[DEBUG] Flag de alerta removida - autenticação OK confirmada pelos logs")
+        except Exception as e:
+            print(f"[DEBUG] Não foi possível remover flag: {e}")
 
         return "✅ OK", ""
 
@@ -249,12 +285,46 @@ def verificar_autenticacao():
         return "❓ Erro", ""
 
 
-def obter_players_online():
-    """Obtém a lista de players atualmente online no servidor"""
+def carregar_estado_players():
+    """Carrega o estado persistente dos jogadores online"""
     try:
-        # Pega mais logs para ter histórico completo da sessão
+        if os.path.exists(PLAYERS_STATE_FILE):
+            with open(PLAYERS_STATE_FILE, 'r') as f:
+                return set(json.load(f))
+        return set()
+    except Exception as e:
+        print(f"[DEBUG] Erro ao carregar estado de players: {e}")
+        return set()
+
+
+def salvar_estado_players(players_set):
+    """Salva o estado persistente dos jogadores online"""
+    try:
+        with open(PLAYERS_STATE_FILE, 'w') as f:
+            json.dump(list(players_set), f)
+        print(f"[DEBUG] Estado salvo: {list(players_set)}")
+    except Exception as e:
+        print(f"[DEBUG] Erro ao salvar estado de players: {e}")
+
+
+def obter_players_online():
+    """Obtém a lista de players atualmente online no servidor usando estado persistente"""
+    try:
+        # Carrega estado anterior (quem estava online)
+        players_online = carregar_estado_players()
+
+        print(f"[DEBUG] Estado carregado: {list(players_online)}")
+
+        # Se a lista está vazia (primeira execução ou servidor reiniciou),
+        # processa histórico completo para detectar quem está online
+        if len(players_online) == 0:
+            print("[DEBUG] ⚠️ Lista vazia - processando histórico completo")
+            tail_lines = "2000"
+        else:
+            tail_lines = "200"
+
         result = subprocess.run(
-            ["docker", "logs", "--tail", "300", "hytale-server"],
+            ["docker", "logs", "--tail", tail_lines, "hytale-server"],
             capture_output=True,
             text=True,
             timeout=5
@@ -263,36 +333,44 @@ def obter_players_online():
         logs = result.stdout + result.stderr
         lines = logs.split('\n')
 
-        # Conjuntos para rastrear players
-        players_online = set()
+        # Detecta reinicialização do servidor
+        # Se o servidor reiniciou, reseta a lista de players
+        if "Starting Hytale server" in logs or "Server started" in logs:
+            print("[DEBUG] ⚠️ Servidor reiniciou - resetando lista de players")
+            players_online = set()
 
-        # Parseia os logs linha por linha
+        # Processa apenas mudanças recentes
         for line in lines:
-            # Padrão: [Universe|P] Adding player 'nome (uuid)' ou Player 'nome' joined world
-            if "[Universe|P] Adding player" in line or ("Adding player" in line and "'" in line):
+            # Padrão: [Universe|P] Adding player 'nome (uuid)'
+            if "[Universe|P] Adding player" in line:
                 try:
                     # Extrai o nome entre aspas simples
                     start = line.find("'") + 1
                     end = line.find("'", start)
                     if start > 0 and end > start:
                         player_name = line[start:end]
-                        players_online.add(player_name)
-                        print(f"[DEBUG] Player adicionado: {player_name}")
+                        if player_name not in players_online:
+                            players_online.add(player_name)
+                            print(f"[DEBUG] ✅ Player conectou: {player_name}")
                 except Exception as e:
-                    print(f"[DEBUG] Erro ao parsear linha de Adding: {line[:100]}", e)
+                    print(f"[DEBUG] Erro ao parsear Adding: {line[:100]}", e)
 
-            # Padrão: [Universe|P] Removing player 'nome' (uuid) ou Removing player 'nome'
-            elif "[Universe|P] Removing player" in line or "Removing player" in line:
+            # Padrão: [Universe|P] Removing player 'nome' (uuid)
+            elif "[Universe|P] Removing player" in line:
                 try:
                     # Extrai o nome entre aspas simples
                     start = line.find("'") + 1
                     end = line.find("'", start)
                     if start > 0 and end > start:
                         player_name = line[start:end]
-                        players_online.discard(player_name)
-                        print(f"[DEBUG] Player removido: {player_name}")
+                        if player_name in players_online:
+                            players_online.discard(player_name)
+                            print(f"[DEBUG] ❌ Player desconectou: {player_name}")
                 except Exception as e:
-                    print(f"[DEBUG] Erro ao parsear linha de Removing: {line[:100]}", e)
+                    print(f"[DEBUG] Erro ao parsear Removing: {line[:100]}", e)
+
+        # Salva estado atualizado
+        salvar_estado_players(players_online)
 
         # Retorna contagem, lista de nomes, e max players
         players_list = sorted(list(players_online))
@@ -304,10 +382,14 @@ def obter_players_online():
 
     except subprocess.TimeoutExpired:
         print("[DEBUG] Timeout ao obter players online")
-        return 0, [], 100
+        # Em caso de timeout, retorna estado anterior
+        players_online = carregar_estado_players()
+        return len(players_online), sorted(list(players_online)), 100
     except Exception as e:
         print("[DEBUG] Erro ao obter players online:", e)
-        return 0, [], 100
+        # Em caso de erro, retorna estado anterior
+        players_online = carregar_estado_players()
+        return len(players_online), sorted(list(players_online)), 100
 
 
 def esta_em_manutencao():

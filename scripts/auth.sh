@@ -32,6 +32,37 @@ print_header() {
 check_auth_status() {
     # Pega os últimos 2000 logs (aumentado para capturar mensagens antigas de boot)
     local logs=$(docker logs --tail 2000 "$CONTAINER_NAME" 2>&1)
+    local logs_lower=$(echo "$logs" | tr '[:upper:]' '[:lower:]')
+
+    # Padrões de sucesso (autenticação bem-sucedida)
+    local padroes_sucesso=(
+        "selected profile:"
+        "authentication successful"
+        "authenticated as"
+        "logged in as"
+        "found 2 game profile(s)"
+        "found 1 game profile(s)"
+        "multiple profiles available"
+    )
+
+    # Verifica se há mensagens de sucesso
+    local tem_sucesso=false
+    for padrao in "${padroes_sucesso[@]}"; do
+        if echo "$logs_lower" | grep -q "$padrao"; then
+            tem_sucesso=true
+            break
+        fi
+    done
+
+    # Se encontrou sucesso, verifica se foi DEPOIS dos erros
+    if [ "$tem_sucesso" = true ]; then
+        # Se tem múltiplos perfis mas não foi selecionado, ainda precisa autenticar
+        if echo "$logs_lower" | grep -q "multiple profiles available" && ! echo "$logs_lower" | grep -q "selected profile:"; then
+            return 1  # Precisa selecionar perfil
+        else
+            return 0  # Autenticação OK
+        fi
+    fi
 
     # Verifica se há erros de autenticação
     if echo "$logs" | grep -qi "session token not available\|make sure to auth first\|authentication unavailable\|auth required\|no server tokens configured"; then

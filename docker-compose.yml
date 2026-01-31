@@ -17,6 +17,7 @@ services:
       - SERVER_PORT=${SERVER_PORT:-5520}
       - USE_AOT_CACHE=${USE_AOT_CACHE:-true}
       - EXTRA_ARGS=${EXTRA_ARGS:-}
+      - HYTALE_PROFILE_INDEX=${HYTALE_PROFILE_INDEX:-1}
 
     volumes:
       # Persistent data
