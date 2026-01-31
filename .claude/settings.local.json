@@ -51,7 +51,13 @@
       "Bash(sudo docker run:*)",
       "Bash(docker cp:*)",
       "Bash(git mv:*)",
-      "Bash(./scripts/auth.sh check:*)"
+      "Bash(./scripts/auth.sh check:*)",
+      "Bash(nslookup:*)",
+      "Bash(dig:*)",
+      "Bash(systemctl status:*)",
+      "Bash(grep:*)",
+      "Bash(sudo vgdisplay:*)",
+      "Bash(docker system:*)"
     ]
   }
 }

@@ -484,7 +484,7 @@ def criar_embed(status, tudo_ok):
     embed.add_field(
         name="IP Servidor",
         value=(
-            "norhytale.com:25565\n"
+            "norhytale.com\n"
         ),
         inline=False
     )
@@ -492,14 +492,14 @@ def criar_embed(status, tudo_ok):
     embed.add_field(
         name="IP Servidor(Reserva)",
         value=(
-            "186.219.130.224:25565\n"
+            "186.219.130.224:5520\n"
         ),
         inline=False
     )
 
     embed.add_field(
         name="Monitoramento",
-        value="https://norhytale.com",
+        value="https://status.norhytale.com",
         inline=False
     )
 
