@@ -2,10 +2,13 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Instala docker-cli
+# Instala docker-cli e configura permissões
 RUN apt-get update \
     && apt-get install -y docker.io \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupdel docker || true \
+    && groupadd -g 111 docker \
+    && usermod -aG docker root
 
 # Copia arquivos do bot
 COPY .docker/discord-bot/bot.py .docker/discord-bot/requirements.txt /app/

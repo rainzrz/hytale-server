@@ -57,8 +57,9 @@ fi
 mkdir -p "$BACKUP_DIR"
 
 # Create backup
-timestamp=$(date +%Y%m%d-%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/hytale-backup-full-${timestamp}.tar.gz"
+# Formato brasileiro: DD-MM-YYYY_HHhMM
+timestamp=$(date +%d-%m-%Y_%Hh%M)
+BACKUP_FILE="$BACKUP_DIR/${timestamp}.tar.gz"
 
 log "Creating backup: $(basename "$BACKUP_FILE")"
 cd "$PROJECT_DIR"
@@ -84,28 +85,45 @@ if [ -n "$GDRIVE_BACKUP_PATH" ]; then
             if rclone copy "$BACKUP_FILE" "$GDRIVE_BACKUP_PATH" 2>&1 | tee -a "$LOG_FILE"; then
                 log_success "Backup uploaded to Google Drive"
 
-                # Clean old Drive backups
-                log "Cleaning old Google Drive backups (keeping 7 most recent)..."
+                # Clean old Drive backups (keep most recent backup per day for 7 days)
+                log "Cleaning old Google Drive backups (keeping most recent per day for 7 days)..."
 
-                backups=$(rclone lsf "$GDRIVE_BACKUP_PATH" --files-only 2>/dev/null | grep "hytale-backup-.*\.tar\.gz$" | sort -r)
-                total_backups=$(echo "$backups" | grep -c "hytale-backup-" || echo "0")
+                backups=$(rclone lsf "$GDRIVE_BACKUP_PATH" --files-only 2>/dev/null | grep "^[0-9]\{2\}-[0-9]\{2\}-[0-9]\{4\}_.*\.tar\.gz$" | sort -r || true)
 
-                if [ "$total_backups" -gt 7 ]; then
-                    to_delete=$((total_backups - 7))
-                    log "Total Drive backups: $total_backups - Removing: $to_delete"
+                if [ -n "$backups" ]; then
+                    # Group backups by date
+                    declare -A daily_drive_backups
+                    cutoff_date=$(date -d '7 days ago' +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d 2>/dev/null)
 
-                    count=0
-                    echo "$backups" | while read -r backup; do
-                        count=$((count + 1))
-                        if [ $count -gt 7 ]; then
-                            log "Removing: $backup"
-                            rclone delete "$GDRIVE_BACKUP_PATH/$backup" 2>&1 | tee -a "$LOG_FILE"
+                    while IFS= read -r backup; do
+                        # Extract date from filename: DD-MM-YYYY_HHhMM.tar.gz
+                        if [[ $backup =~ ^([0-9]{2})-([0-9]{2})-([0-9]{4})_([0-9]{2})h([0-9]{2})\.tar\.gz$ ]]; then
+                            day="${BASH_REMATCH[1]}"
+                            month="${BASH_REMATCH[2]}"
+                            year="${BASH_REMATCH[3]}"
+                            # Convert to YYYYMMDD for comparison
+                            backup_date="${year}${month}${day}"
+
+                            # Check if backup is older than 7 days
+                            if [ "$backup_date" -lt "$cutoff_date" ]; then
+                                log "Removing from Drive: $backup (older than 7 days)"
+                                rclone delete "$GDRIVE_BACKUP_PATH/$backup" 2>&1 | tee -a "$LOG_FILE"
+                            elif [ -z "${daily_drive_backups[$backup_date]}" ]; then
+                                # Keep first (most recent) backup for this date
+                                daily_drive_backups[$backup_date]="$backup"
+                                log "Keeping in Drive: $backup (most recent for $backup_date)"
+                            else
+                                # Remove older backup from same day
+                                log "Removing from Drive: $backup (superseded by newer backup on same day)"
+                                rclone delete "$GDRIVE_BACKUP_PATH/$backup" 2>&1 | tee -a "$LOG_FILE"
+                            fi
                         fi
-                    done
+                    done <<< "$backups"
 
-                    log_success "Drive cleanup completed"
+                    remaining_count=$(rclone lsf "$GDRIVE_BACKUP_PATH" --files-only 2>/dev/null | grep -c "^[0-9]\{2\}-[0-9]\{2\}-[0-9]\{4\}_.*\.tar\.gz$" || echo "0")
+                    log_success "Drive cleanup completed (kept $remaining_count daily backups)"
                 else
-                    log "Total Drive backups: $total_backups (within limit)"
+                    log "No backups found in Google Drive"
                 fi
             else
                 log_error "Failed to upload backup to Google Drive"
@@ -118,19 +136,52 @@ if [ -n "$GDRIVE_BACKUP_PATH" ]; then
     fi
 fi
 
-# Clean old local backups (keep 7 most recent)
-log "Cleaning old local backups (keeping 7 most recent)..."
+# Clean old local backups (keep most recent backup per day for 7 days)
+log "Cleaning old local backups (keeping most recent per day for 7 days)..."
 cd "$BACKUP_DIR"
-backup_count=$(ls -t hytale-backup-*.tar.gz 2>/dev/null | wc -l)
 
-if [ "$backup_count" -gt 7 ]; then
-    ls -t hytale-backup-*.tar.gz | tail -n +8 | while read -r old_backup; do
-        log "Removing old local backup: $old_backup"
-        rm -f "$old_backup"
+# Get list of all backups sorted by name (which includes timestamp)
+backups=$(ls -1 [0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]_*.tar.gz 2>/dev/null | sort -r || true)
+
+if [ -n "$backups" ]; then
+    # Group backups by date
+    declare -A daily_backups
+
+    while IFS= read -r backup; do
+        # Extract date from filename: DD-MM-YYYY_HHhMM.tar.gz
+        if [[ $backup =~ ^([0-9]{2})-([0-9]{2})-([0-9]{4})_([0-9]{2})h([0-9]{2})\.tar\.gz$ ]]; then
+            day="${BASH_REMATCH[1]}"
+            month="${BASH_REMATCH[2]}"
+            year="${BASH_REMATCH[3]}"
+            # Convert to YYYYMMDD for comparison
+            backup_date="${year}${month}${day}"
+
+            # Keep only the most recent backup for each date (first one since sorted in reverse)
+            if [ -z "${daily_backups[$backup_date]}" ]; then
+                daily_backups[$backup_date]="$backup"
+                log "Keeping: $backup (most recent for $backup_date)"
+            else
+                log "Removing: $backup (superseded by newer backup on same day)"
+                rm -f "$backup"
+            fi
+        fi
+    done <<< "$backups"
+
+    # Now remove backups older than 7 days
+    cutoff_date=$(date -d '7 days ago' +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d 2>/dev/null)
+
+    for backup_date in "${!daily_backups[@]}"; do
+        if [ "$backup_date" -lt "$cutoff_date" ]; then
+            backup_file="${daily_backups[$backup_date]}"
+            log "Removing: $backup_file (older than 7 days)"
+            rm -f "$backup_file"
+        fi
     done
-    log_success "Local cleanup completed"
+
+    remaining_count=$(ls -1 [0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]_*.tar.gz 2>/dev/null | wc -l)
+    log_success "Local cleanup completed (kept $remaining_count daily backups)"
 else
-    log "Total local backups: $backup_count (within limit)"
+    log "No backups found"
 fi
 
 log "=========================================="

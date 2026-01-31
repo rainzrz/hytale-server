@@ -344,11 +344,11 @@ def obter_players_online():
             # Padrão: [Universe|P] Adding player 'nome (uuid)'
             if "[Universe|P] Adding player" in line:
                 try:
-                    # Extrai o nome entre aspas simples
+                    # Extrai o nome: começa após ' e termina antes de ' ('
                     start = line.find("'") + 1
-                    end = line.find("'", start)
+                    end = line.find(" (", start)
                     if start > 0 and end > start:
-                        player_name = line[start:end]
+                        player_name = line[start:end].strip()
                         if player_name not in players_online:
                             players_online.add(player_name)
                             print(f"[DEBUG] ✅ Player conectou: {player_name}")
@@ -358,11 +358,21 @@ def obter_players_online():
             # Padrão: [Universe|P] Removing player 'nome' (uuid)
             elif "[Universe|P] Removing player" in line:
                 try:
-                    # Extrai o nome entre aspas simples
+                    # Extrai o nome: começa após ' e termina antes de ' (' ou '''
                     start = line.find("'") + 1
-                    end = line.find("'", start)
+                    # Tenta encontrar ' (' primeiro, se não encontrar usa a segunda '
+                    end_paren = line.find(" (", start)
+                    end_quote = line.find("'", start)
+
+                    if end_paren > start:
+                        end = end_paren
+                    elif end_quote > start:
+                        end = end_quote
+                    else:
+                        end = -1
+
                     if start > 0 and end > start:
-                        player_name = line[start:end]
+                        player_name = line[start:end].strip()
                         if player_name in players_online:
                             players_online.discard(player_name)
                             print(f"[DEBUG] ❌ Player desconectou: {player_name}")
