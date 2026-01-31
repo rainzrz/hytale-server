@@ -358,19 +358,9 @@ def obter_players_online():
             # Padrão: [Universe|P] Removing player 'nome' (uuid)
             elif "[Universe|P] Removing player" in line:
                 try:
-                    # Extrai o nome: começa após ' e termina antes de ' (' ou '''
+                    # Extrai o nome entre aspas simples (formato: 'nome')
                     start = line.find("'") + 1
-                    # Tenta encontrar ' (' primeiro, se não encontrar usa a segunda '
-                    end_paren = line.find(" (", start)
-                    end_quote = line.find("'", start)
-
-                    if end_paren > start:
-                        end = end_paren
-                    elif end_quote > start:
-                        end = end_quote
-                    else:
-                        end = -1
-
+                    end = line.find("'", start)
                     if start > 0 and end > start:
                         player_name = line[start:end].strip()
                         if player_name in players_online:
