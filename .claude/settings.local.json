@@ -57,7 +57,13 @@
       "Bash(systemctl status:*)",
       "Bash(grep:*)",
       "Bash(sudo vgdisplay:*)",
-      "Bash(docker system:*)"
+      "Bash(docker system:*)",
+      "Bash(sort:*)",
+      "Bash(docker start:*)",
+      "Bash(sudo docker start:*)",
+      "Bash(docker stop:*)",
+      "Bash(sudo docker stop:*)",
+      "Bash(sudo cp:*)"
     ]
   }
 }
