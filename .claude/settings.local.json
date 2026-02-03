@@ -63,7 +63,10 @@
       "Bash(sudo docker start:*)",
       "Bash(docker stop:*)",
       "Bash(sudo docker stop:*)",
-      "Bash(sudo cp:*)"
+      "Bash(sudo cp:*)",
+      "Bash(nc:*)",
+      "Bash(ss:*)",
+      "Bash(curl:*)"
     ]
   }
 }

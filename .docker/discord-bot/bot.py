@@ -103,13 +103,15 @@ async def checar_network():
 
         def net_check():
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5)
-                result = sock.connect_ex(("186.219.130.224", 80))
-                sock.close()
-                return result == 0
+                # Ping no IP externo - se falhar, IP pode ter mudado
+                result = subprocess.run(
+                    ["ping", "-c", "1", "-W", "5", "177.22.181.41"],
+                    capture_output=True,
+                    timeout=10
+                )
+                return result.returncode == 0
             except Exception as e:
-                print("[DEBUG] Network TCP erro:", e)
+                print("[DEBUG] Network ping erro:", e)
                 return False
 
         return await loop.run_in_executor(None, net_check)
@@ -148,8 +150,8 @@ def obter_ultimo_backup():
         if not os.path.exists(backups_dir):
             return "Nenhum backup encontrado"
 
-        # Lista todos os arquivos de backup
-        backups = glob.glob(f"{backups_dir}/hytale-backup-*.tar.gz")
+        # Lista todos os arquivos de backup (formato: DD-MM-YYYY_HHhMM.tar.gz)
+        backups = glob.glob(f"{backups_dir}/*.tar.gz")
 
         if not backups:
             return "Nenhum backup encontrado"
@@ -492,7 +494,7 @@ def criar_embed(status, tudo_ok):
     embed.add_field(
         name="IP Servidor(Reserva)",
         value=(
-            "186.219.130.224:5520\n"
+            "177.22.181.41:5520\n"
         ),
         inline=False
     )

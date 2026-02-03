@@ -2,9 +2,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Instala docker-cli e configura permissões
+# Instala docker-cli, ping e configura permissões
 RUN apt-get update \
-    && apt-get install -y docker.io \
+    && apt-get install -y docker.io iputils-ping \
     && rm -rf /var/lib/apt/lists/* \
     && groupdel docker || true \
     && groupadd -g 111 docker \
