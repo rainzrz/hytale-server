@@ -42,7 +42,7 @@ print(f"  - Canal Discord: {CHANNEL_ID}", flush=True)
 print(f"  - Monitorando 3 serviços:", flush=True)
 print(f"    • NOR Cloudflare (DNS norhytale.com)", flush=True)
 print(f"    • NOR Docker (SSH 192.168.1.13:22)", flush=True)
-print(f"    • NOR Network (186.219.130.224)", flush=True)
+print(f"    • NOR Network (143.202.133.128)", flush=True)
 print(f"  - Embed consolidado será atualizado a cada 30s", flush=True)
 
 intents = discord.Intents.default()
@@ -95,14 +95,14 @@ async def checar_docker():
         return 0
 
 async def checar_network():
-    """Verifica ping para 186.219.130.224"""
+    """Verifica ping para 143.202.133.128"""
     try:
         loop = asyncio.get_event_loop()
         def ping_check():
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
-                result = sock.connect_ex(("186.219.130.224", 80))
+                result = sock.connect_ex(("143.202.133.128", 80))
                 sock.close()
                 return result == 0
             except Exception:
@@ -115,7 +115,7 @@ async def checar_network():
         return 0
 
 async def checar_hytale_server():
-    """Verifica se o servidor Hytale está rodando (porta 25565 UDP)"""
+    """Verifica se o servidor Hytale está rodando (porta 5520 UDP)"""
     try:
         loop = asyncio.get_event_loop()
         def server_check():
@@ -123,7 +123,7 @@ async def checar_hytale_server():
                 # Tenta conexão TCP no hostname do container
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
-                result = sock.connect_ex(("hytale-server", 25565))
+                result = sock.connect_ex(("hytale-server", 5520))
                 sock.close()
                 return result == 0
             except Exception:
@@ -157,7 +157,7 @@ def criar_embed_status(status_cloudflare, status_docker, status_network):
     # IPs
     embed.add_field(
         name="🌐 IPs",
-        value="norhytale.com:25565\n186.219.130.224:25565",
+        value="norhytale.com:5520\n143.202.133.128:5520",
         inline=False
     )
 

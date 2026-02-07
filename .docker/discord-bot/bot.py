@@ -105,7 +105,7 @@ async def checar_network():
             try:
                 # Ping no IP externo - se falhar, IP pode ter mudado
                 result = subprocess.run(
-                    ["ping", "-c", "1", "-W", "5", "177.22.181.41"],
+                    ["ping", "-c", "1", "-W", "5", "143.202.133.128"],
                     capture_output=True,
                     timeout=10
                 )
@@ -494,7 +494,7 @@ def criar_embed(status, tudo_ok):
     embed.add_field(
         name="IP Servidor(Reserva)",
         value=(
-            "177.22.181.41:5520\n"
+            "143.202.133.128:5520\n"
         ),
         inline=False
     )

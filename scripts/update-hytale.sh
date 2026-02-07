@@ -378,7 +378,7 @@ show_summary() {
     echo -e "     ${CYAN}docker compose logs -f hytale-server${RESET}"
     echo ""
     echo -e "  ${BLUE}3.${RESET} Testar conexão no jogo:"
-    echo -e "     ${CYAN}186.219.130.224:25565${RESET}"
+    echo -e "     ${CYAN}143.202.133.128:5520${RESET}"
     echo ""
     echo -e "  ${BLUE}4.${RESET} Se ocorrerem problemas, reverta manualmente:"
     echo -e "     ${GRAY}cd $PROJECT_DIR${RESET}"
